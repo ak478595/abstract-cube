@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CubeLab — Interactive Rubik’s Cube & Abstract Algebra</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./src/styles/main.css">
+</head>
+<body>
+  <!-- Global Navigation Header -->
+  <header class="site-header">
+    <div class="header-container">
+      <a class="logo-area" id="nav-logo" href="#">
+        <div class="cube-mini-icon">
+          <span></span><span></span><span></span>
+          <span></span><span></span><span></span>
+          <span></span><span></span><span></span>
+        </div>
+        <span class="logo-title">CubeLab</span>
+      </a>
+
+      <nav>
+        <ul class="nav-links">
+          <li><button class="nav-link-btn active" data-target="home">Home</button></li>
+          <li><button class="nav-link-btn" data-target="lab">Manual Cube Lab</button></li>
+          <li><button class="nav-link-btn" data-target="solver">Automatic Solver</button></li>
+          <li><button class="nav-link-btn" data-target="algebra">Learn Abstract Algebra</button></li>
+          <li><button class="nav-link-btn" data-target="about">About the Project</button></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <!-- App Views Mount -->
+  <main id="app-viewport"></main>
+
+  <!-- Global Footer -->
+  <footer class="site-footer">
+    <p>
+      <strong>CubeLab</strong> &bull; A Mathematical Rubik’s Cube Visualization Platform for Undergraduate Abstract Algebra.
+    </p>
+    <p style="margin-top: 0.5rem; font-size: 0.82rem; opacity: 0.8;">
+      Department of Mathematics, Vellore Institute of Technology &bull; Syllabus TMAT302L &bull; God’s Number: 20 Moves (HTM)
+    </p>
+  </footer>
+
+  <!-- Offscreen 3D Stage Cache to persist Three.js scene across tabs -->
+  <div id="hidden-stage-cache" style="display: none;"></div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
+

@@ -1,101 +1,88 @@
 # CubeLab
 
-**A 3D Rubik’s Cube for learning abstract algebra**
+**An Interactive 3D Rubik’s Cube & Abstract Algebra Visualization Platform**
 
-CubeLab is an educational project exploring how the Rubik’s Cube can make ideas from group theory visible and interactive. The long-term goal is to connect familiar cube moves with algebraic notation, permutations, and structured experiments.
+CubeLab is an interactive, browser-based mathematical simulation and learning environment connecting the physical motions and algorithms of the Rubik's Cube with university-level abstract algebra (specifically Group Theory, Permutations in $S_8 \times S_{12}$, Cyclic Subgroups, Conjugation, Commutators, and Solvability).
 
-> **Project status:** The repository is currently an empty project scaffold. The interactive cube and learning features described below are planned; they are not implemented yet.
+---
 
-## Project overview
+## 🌟 Key Features
 
-A Rubik’s Cube is more than a puzzle: each legal move is a transformation, and sequences of moves compose into further transformations. CubeLab aims to give learners a 3D environment in which they can experiment with those transformations and connect what they see to the mathematics behind them.
+1. **High-Fidelity 3D Rubik's Cube Engine (Three.js)**
+   - 27-cubie construction with minimal black gaps between cubies and realistic sticker boundaries.
+   - Fixed center spider core: center pieces remain in their true geometric reference positions.
+   - Interactive face & sticker selection via raycasting on world normals: clicking a sticker identifies its face, cubie type (Corner, Edge, Center), and allows direct rotation.
+   - Full 18-move support: $\{U, D, L, R, F, B\}$ quarter turns, inverse primes $\{U', D', L', R', F', B'\}$, and half-turns $\{U2, D2, L2, R2, F2, B2\}$.
+   - Layer rotation animation queue ensuring physical state and logical state remain synchronized without visual corruption.
 
-The project is intended for students, educators, and curious puzzlers who want an approachable introduction to abstract algebra through a concrete object.
+2. **Manual Cube Lab (Immersive Dark Theme)**
+   - Two-column responsive layout with interactive particle & cursor gradient backdrop.
+   - Complete 18-move generator keypad and sticker rotation controls.
+   - Real-time **Latest Move Telemetry**: Move notation, affected face, turn direction, and move number.
+   - **Unified Move History & State Timeline**: Step backward and forward through prior states, undo, redo, and review past sessions.
+   - **Live Group Theory Permutation Decomposition**:
+     - Decomposes any current cube state into disjoint cycle notation on Corner slots ($1-8$) and Edge slots ($1-12$).
+     - Evaluates cycle lengths, net orientation twists ($\mathbb{Z}_3$) and flips ($\mathbb{Z}_2$), parity of permutations, and exact element order ($\text{lcm}$).
 
-## Planned learning experience
+3. **Automatic Scramble and Solver Mode**
+   - **Official Scrambler**: Generates pseudo-random scramble algorithms avoiding redundant face oscillations.
+   - **Playback Controls**: Play scramble, step forward, step backward, pause, and reset.
+   - **Herbert Kociemba Two-Phase Solver**: Computes solutions to any reachable scrambled cube state in at most 22 moves (HTM) in under $50\,\text{ms}$.
+   - **Interactive Solution Playback**: Step through solution moves with active badges, progress counters, and final state programmatic verification.
 
-The following capabilities are planned or in development; none should be considered available until implemented:
+4. **Editorial Homepage & Syllabus Learning Section**
+   - Palette: Golden Sandstone (`#8A724C`), Amber Tresses (`#B99668`), Silken Dune (`#DCC9A7`), Champagne Veil (`#EDE2CC`), and Ivory Whisper (`#F7F3E8`).
+   - Mechanical breakdown of 6 centers, 12 edges, 8 corners, and standard Singmaster move notation.
+   - Direct correspondence to undergraduate abstract algebra syllabus (Groups, Group Axioms, Generators, Cyclic Subgroups $\langle R \rangle$, Permutation Groups in $S_8 \times S_{12}$, Conjugation $ABA^{-1}$, Commutators $[A, B]$, Configuration Space of $4.325 \times 10^{18}$ states, and God's Number 20 HTM).
+   - Interactive 6-stage abstraction flowchart from physical cube turns to algorithms.
 
-- **3D cube interaction** — rotate the view and apply face turns.
-- **Move notation** — explore standard face-turn notation and see moves applied to the cube.
-- **Permutation view** — connect a move sequence to how cube pieces or stickers are rearranged.
-- **Algebra learning tools** — investigate identity moves, inverses, powers, cyclic subgroups, and commutators.
-- **Guided activities** — work through short experiments that build intuition from observation to notation.
+---
 
-## Mathematical background
+## 🚀 Getting Started
 
-### Moves as transformations
+### Prerequisites
+- Node.js (v18+ recommended)
+- npm
 
-Let \(G\) denote the group of transformations generated by the legal face turns of a standard 3×3×3 Rubik’s Cube. A face turn such as \(R\) (turn the right face clockwise, viewed from that face) is a generator. Every finite sequence of face turns represents an element of \(G\).
-
-The chosen notation convention matters when composing moves: in this README, a written sequence is performed from left to right as read. An implementation should document and use one convention consistently.
-
-### Identity and inverses
-
-The identity transformation \(e\) leaves the cube unchanged. A move followed by its inverse gives the identity:
-
-\[
-R R^{-1} = R^{-1} R = e.
-\]
-
-For a quarter-turn face move, the inverse is the opposite quarter turn, commonly written \(R'\). Four quarter turns return that face to its starting orientation, so \(R^4=e\).
-
-### Cyclic subgroups
-
-Repeatedly applying one move produces a cyclic subgroup. For a quarter-turn \(R\),
-
-\[
-\langle R \rangle = \{e, R, R^2, R^3\},
-\]
-
-and \(R^4=e\). This is a small, observable example of how a generator creates a subgroup.
-
-### Permutation cycles
-
-A move permutes the cube’s movable pieces (and, depending on the model, their orientations). Permutations can be written as disjoint cycles. For example, \((a\ b\ c)\) means that position \(a\) maps to \(b\), \(b\) maps to \(c\), and \(c\) maps to \(a\). A cube visualization can help make these abstract rearrangements concrete.
-
-### Commutators
-
-For group elements \(A\) and \(B\), one common commutator convention is
-
-\[
-[A,B] = A B A^{-1} B^{-1}.
-\]
-
-A commutator measures how the order of two transformations interacts: if \(A\) and \(B\) commute, then \([A,B]=e\). Otherwise, the commutator may produce a nontrivial transformation. Since some texts use the reversed convention, CubeLab should state its convention wherever commutators are introduced.
-
-## Getting started
-
-There is no runnable application or setup command in the repository yet. The repository currently contains no source code or dependency manifest, so installation instructions will be added once the application stack and entry point exist.
-
-To inspect the project repository:
-
-```sh
+### Installation & Local Run
+```bash
+# Clone the repository
 git clone https://github.com/ak478595/abstract-cube.git
 cd abstract-cube
+
+# Install dependencies
+npm install
+
+# Start local development server with Vite
+npm run dev
 ```
 
-At this stage, there is no application to launch after cloning.
+Open `http://localhost:5173` in your browser.
 
-## Roadmap
+### Build for Production
+```bash
+npm run build
+```
 
-All items below are planned and may change:
+The production distribution will be bundled into `dist/`.
 
-1. Establish the application stack and document a reproducible local development setup.
-2. Build the initial 3D cube model and basic face-turn interaction.
-3. Add move notation, sequence playback, and reset controls.
-4. Visualize piece permutations and introduce identity, inverses, and cyclic subgroups.
-5. Add guided activities for permutation cycles and commutators.
-6. Improve accessibility, learning materials, and project documentation.
+---
 
-## Academic context
+## 🧪 Mathematical & Engine Verification
 
-CubeLab is an independent educational project concept centered on the Rubik’s Cube as a model for group actions and permutation structure. The mathematical explanations are intended as learning aids, not as a substitute for a course text or a formal treatment of the cube group. Contributions that improve mathematical precision, pedagogy, accessibility, or implementation are welcome once development is underway.
+Run the automated group theory and cube engine test suite:
+```bash
+node test_table3.js
+```
 
-## Contributing
+This verifies the element orders and permutation cycle structures of the reference paper (including $[R, U]$, $(R^2 U^2)$, and max-order sequence $R\,U^2\,D'\,B\,D'$ of order $1260$).
 
-The repository is at its initial stage. As code and contribution guidelines are added, this section will describe how to set up the development environment, report issues, and propose changes.
+---
 
-## License
-
-No license has been added to this repository yet. Until the owner selects and publishes a license, the project’s reuse and redistribution terms are unspecified. Please check back for an explicit license before reusing the project.
+## 📚 Mathematical Reference
+- **Author**: Aadi Krishnan, Department of Integrated M.Sc. Mathematics, Vellore Institute of Technology (VIT).
+- **Curriculum**: TMAT302L Abstract Algebra (Group Theory, Cyclic Groups, Permutation Groups, Solvability).
+- **References**:
+  1. T. Rokicki, H. Kociemba, M. Davidson, J. Dethridge, *The diameter of the Rubik's Cube group is twenty*, SIAM J. Discrete Math 27 (2013).
+  2. D. Joyner, *Adventures in Group Theory: Rubik's Cube, Merlin's Machine, and Other Mathematical Toys*, Johns Hopkins University Press.
+  3. D. Singmaster, *Notes on Rubik's Magic Cube*, Enslow Publishers, 1981.
