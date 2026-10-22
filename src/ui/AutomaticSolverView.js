@@ -122,7 +122,7 @@ export function renderAutomaticSolverView(container, {
 
           <!-- 2. AUTOMATIC SOLVER CARD -->
           <div class="control-card-panel">
-            <h3 class="panel-header-title">2. Kociemba Two-Phase Solver</h3>
+            <h3 class="panel-header-title">2. Cube Solver</h3>
             <p class="panel-header-desc">
               Solves the cube using Herbert Kociemba's two-phase algorithm. Guarantees near-optimal solutions (at most 22 moves).
             </p>
@@ -183,6 +183,7 @@ export function renderAutomaticSolverView(container, {
   let currentSolution = [];
   let solutionIndex = 0;
   let isPlayingSolution = false;
+  let isUnmounted = false;
 
   let stateBeforeScramble = logicalCube.getAsString();
 
@@ -229,10 +230,13 @@ export function renderAutomaticSolverView(container, {
 
   // 1. Generate Scramble
   btnGenScramble.addEventListener('click', () => {
+    isPlayingScramble = false;
+    isPlayingSolution = false;
     stateBeforeScramble = logicalCube.getAsString();
     currentScramble = generateScramble(20);
     scrambleIndex = 0;
-    isPlayingScramble = false;
+    solutionSection.style.display = 'none';
+    successBanner.style.display = 'none';
 
     scrambleBox.textContent = currentScramble.join(' ');
     btnPlayScramble.disabled = false;
@@ -246,6 +250,8 @@ export function renderAutomaticSolverView(container, {
 
   // Play Scramble
   async function stepScrambleFwd() {
+    if (!isPlayingScramble || isUnmounted) return;
+
     if (scrambleIndex >= currentScramble.length) {
       isPlayingScramble = false;
       btnScramblePause.disabled = true;
@@ -258,6 +264,9 @@ export function renderAutomaticSolverView(container, {
     sessionManager.recordMove(move);
     updateStatusHUD('Scrambling...', scrambleIndex + 1, currentScramble.length, move);
     await cubeEngine.executeMove(move);
+
+    if (!isPlayingScramble || isUnmounted) return;
+
     scrambleIndex++;
     btnScrambleStepBack.disabled = false;
 
@@ -272,6 +281,8 @@ export function renderAutomaticSolverView(container, {
   }
 
   btnPlayScramble.addEventListener('click', () => {
+    if (scrambleIndex >= currentScramble.length) scrambleIndex = 0;
+    isPlayingSolution = false;
     isPlayingScramble = true;
     btnScramblePause.disabled = false;
     btnPlayScramble.disabled = true;
@@ -309,9 +320,11 @@ export function renderAutomaticSolverView(container, {
 
   btnResetScramble.addEventListener('click', () => {
     isPlayingScramble = false;
+    isPlayingSolution = false;
     logicalCube.reset();
     cubeEngine.resetToIdentity();
     scrambleIndex = 0;
+    btnPlayScramble.disabled = currentScramble.length === 0;
     updateStatusHUD('Cube Reset to Solved', 0, 0, '');
     successBanner.style.display = 'none';
     solutionSection.style.display = 'none';
@@ -368,6 +381,8 @@ export function renderAutomaticSolverView(container, {
   }
 
   async function stepSolutionFwd() {
+    if (!isPlayingSolution || isUnmounted) return;
+
     if (solutionIndex >= currentSolution.length) {
       isPlayingSolution = false;
       onSolutionFinished();
@@ -380,6 +395,8 @@ export function renderAutomaticSolverView(container, {
 
     renderSolutionBadges();
     await cubeEngine.executeMove(move);
+
+    if (!isPlayingSolution || isUnmounted) return;
 
     solutionIndex++;
     renderSolutionBadges();
@@ -397,6 +414,7 @@ export function renderAutomaticSolverView(container, {
     if (logicalCube.isSolved()) {
       updateStatusHUD('Solved!', currentSolution.length, currentSolution.length, '');
       successBanner.style.display = 'block';
+      btnPlayScramble.disabled = currentScramble.length === 0;
       successBanner.scrollIntoView({ behavior: 'smooth' });
     }
   }
@@ -453,4 +471,10 @@ export function renderAutomaticSolverView(container, {
   });
 
   container.querySelector('#solver-btn-reset-view')?.addEventListener('click', () => onResetView());
+
+  return () => {
+    isUnmounted = true;
+    isPlayingScramble = false;
+    isPlayingSolution = false;
+  };
 }

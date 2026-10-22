@@ -1,0 +1,440 @@
+/* ==========================================================================
+   Welcome Screen Styles - Cube Simulator
+   Dynamic Colour-Changing 2D Cube & Forward-Motion Portal Transition
+   ========================================================================== */
+
+:root {
+  --rubik-white: #FFFFFF;
+  --rubik-yellow: #FFD500;
+  --rubik-red: #C41E3A;
+  --rubik-orange: #FF5800;
+  --rubik-blue: #0051BA;
+  --rubik-green: #009E60;
+}
+
+.welcome-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  background-color: var(--c-ivory, #F7F3E8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  opacity: 1;
+  transition: opacity 0.85s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+  perspective: 1200px;
+}
+
+.welcome-overlay.fade-out {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.welcome-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem;
+  max-width: 600px;
+  width: 100%;
+  position: relative;
+  z-index: 2;
+}
+
+.welcome-title-wrapper {
+  margin-bottom: 2rem;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: welcomeFadeInUp 0.8s 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.welcome-title {
+  font-family: var(--font-serif, 'Playfair Display', serif);
+  font-size: 3.5rem;
+  font-weight: 800;
+  color: var(--c-dark-charcoal, #2A2621);
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.welcome-title span {
+  color: var(--c-sandstone, #8A724C);
+  font-style: italic;
+}
+
+.welcome-subtitle {
+  font-family: var(--font-sans, 'Inter', sans-serif);
+  font-size: 1.1rem;
+  color: var(--c-muted-brown, #665C4F);
+  margin-top: 0.5rem;
+  font-weight: 500;
+}
+
+/* Cube 3D Presentation Stage */
+.welcome-cube-stage {
+  padding: 1rem 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 1200px;
+  perspective-origin: center center;
+  transform-style: preserve-3d;
+}
+
+/* 2D Geometric Cube SVG & Idle Breathing Animation */
+.welcome-cube-svg {
+  width: 220px;
+  height: 220px;
+  filter: drop-shadow(0 15px 35px rgba(138, 114, 76, 0.22));
+  transform-origin: center center;
+  opacity: 0;
+  animation: welcomeCubePop 0.8s 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards, welcomeCubeIdle 4.5s 1.2s ease-in-out infinite alternate;
+  will-change: transform, filter, opacity;
+  transform-style: preserve-3d;
+}
+
+/* Individual Tiles within the 2D Cube */
+.welcome-cube-svg .tile {
+  transition: transform 1.8s cubic-bezier(0.22, 1, 0.36, 1), opacity 1.2s ease;
+  transform-origin: center center;
+}
+
+.welcome-cube-svg .tile rect {
+  transition: fill 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* --------------------------------------------------------------------------
+   Idle Coordinated Puzzle-Like Tile Colour Cycling (Simulating Slice Turns)
+   Total cycle: 12s with graceful pauses and coordinated slice turns
+   Colors: White, Yellow, Red, Orange, Blue, Green
+   -------------------------------------------------------------------------- */
+
+.welcome-cube-svg .tile-corner-tl rect { animation: tileColorTL 12s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+.welcome-cube-svg .tile-up rect        { animation: tileColorUp 12s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+.welcome-cube-svg .tile-corner-tr rect { animation: tileColorTR 12s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+.welcome-cube-svg .tile-left rect      { animation: tileColorLeft 12s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+.welcome-cube-svg .tile-center rect    { animation: tileColorCenter 12s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+.welcome-cube-svg .tile-right rect     { animation: tileColorRight 12s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+.welcome-cube-svg .tile-corner-bl rect { animation: tileColorBL 12s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+.welcome-cube-svg .tile-down rect      { animation: tileColorDown 12s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+.welcome-cube-svg .tile-corner-br rect { animation: tileColorBR 12s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+
+/* 1. Top-Left Corner */
+@keyframes tileColorTL {
+  0%, 12%      { fill: #FFFFFF; } /* White (Initial) */
+  16.66%, 62%  { fill: #0051BA; } /* Blue (U-slice turn) */
+  66.66%, 95%  { fill: #FF5800; } /* Orange (L-slice turn) */
+  100%         { fill: #FFFFFF; } /* Returns to White */
+}
+
+/* 2. Top-Center Edge */
+@keyframes tileColorUp {
+  0%, 12%      { fill: #C41E3A; } /* Red (Initial) */
+  16.66%, 78%  { fill: #FFFFFF; } /* White (U-slice turn) */
+  83.33%, 95%  { fill: #009E60; } /* Green (M-slice turn) */
+  100%         { fill: #C41E3A; } /* Returns to Red */
+}
+
+/* 3. Top-Right Corner */
+@keyframes tileColorTR {
+  0%, 12%      { fill: #0051BA; } /* Blue (Initial) */
+  16.66%, 28%  { fill: #C41E3A; } /* Red (U-slice turn) */
+  33.33%, 95%  { fill: #FFD500; } /* Yellow (R-slice turn) */
+  100%         { fill: #0051BA; } /* Returns to Blue */
+}
+
+/* 4. Center-Left Edge */
+@keyframes tileColorLeft {
+  0%, 62%      { fill: #FF5800; } /* Orange (Initial) */
+  66.66%, 95%  { fill: #009E60; } /* Green (L-slice turn) */
+  100%         { fill: #FF5800; } /* Returns to Orange */
+}
+
+/* 5. Central Tile */
+@keyframes tileColorCenter {
+  0%, 78%      { fill: #FFD500; } /* Yellow (Initial) */
+  83.33%, 95%  { fill: #C41E3A; } /* Red (M-slice turn) */
+  100%         { fill: #FFD500; } /* Returns to Yellow */
+}
+
+/* 6. Center-Right Edge */
+@keyframes tileColorRight {
+  0%, 28%      { fill: #009E60; } /* Green (Initial) */
+  33.33%, 95%  { fill: #FFFFFF; } /* White (R-slice turn) */
+  100%         { fill: #009E60; } /* Returns to Green */
+}
+
+/* 7. Bottom-Left Corner */
+@keyframes tileColorBL {
+  0%, 45%      { fill: #009E60; } /* Green (Initial) */
+  50.00%, 62%  { fill: #FFFFFF; } /* White (D-slice turn) */
+  66.66%, 95%  { fill: #0051BA; } /* Blue (L-slice turn) */
+  100%         { fill: #009E60; } /* Returns to Green */
+}
+
+/* 8. Bottom-Center Edge */
+@keyframes tileColorDown {
+  0%, 45%      { fill: #FFFFFF; } /* White (Initial) */
+  50.00%, 78%  { fill: #009E60; } /* Green (D-slice turn) */
+  83.33%, 95%  { fill: #FF5800; } /* Orange (M-slice turn) */
+  100%         { fill: #FFFFFF; } /* Returns to White */
+}
+
+/* 9. Bottom-Right Corner */
+@keyframes tileColorBR {
+  0%, 28%      { fill: #C41E3A; } /* Red (Initial) */
+  33.33%, 45%  { fill: #009E60; } /* Green (R-slice turn) */
+  50.00%, 95%  { fill: #0051BA; } /* Blue (D-slice turn) */
+  100%         { fill: #C41E3A; } /* Returns to Red */
+}
+
+/* Pop-in introductory entrance */
+@keyframes welcomeCubePop {
+  0% {
+    opacity: 0;
+    transform: scale(0.7) rotate(-8deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+/* Gentle, elegant idle floating animation while waiting for user click */
+@keyframes welcomeCubeIdle {
+  0% {
+    transform: translateY(0px) rotate(0deg);
+    filter: drop-shadow(0 15px 35px rgba(138, 114, 76, 0.22));
+  }
+  50% {
+    transform: translateY(-8px) rotate(1.5deg);
+    filter: drop-shadow(0 24px 44px rgba(138, 114, 76, 0.28));
+  }
+  100% {
+    transform: translateY(0px) rotate(-1deg);
+    filter: drop-shadow(0 15px 35px rgba(138, 114, 76, 0.22));
+  }
+}
+
+@keyframes welcomeFadeInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   FORWARD MOTION & PORTAL TRANSITION (Triggered on User Click)
+   Cube approaches the screen, rotates with 3D depth, rapid color cycling,
+   and expands to fill the screen as the homepage emerges smoothly behind it.
+   -------------------------------------------------------------------------- */
+
+.welcome-overlay.entering .welcome-title-wrapper,
+.welcome-overlay.entering .welcome-enter-btn,
+.welcome-overlay.opening .welcome-title-wrapper,
+.welcome-overlay.opening .welcome-enter-btn {
+  opacity: 0 !important;
+  transform: translateY(-16px) scale(0.96) !important;
+  transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  pointer-events: none !important;
+}
+
+.welcome-overlay.entering .welcome-cube-svg,
+.welcome-overlay.opening .welcome-cube-svg {
+  animation: cubeForwardApproach 1.85s cubic-bezier(0.22, 1, 0.36, 1) forwards !important;
+  filter: drop-shadow(0 30px 70px rgba(0, 0, 0, 0.45)) !important;
+}
+
+@keyframes cubeForwardApproach {
+  0% {
+    transform: scale(1) translateZ(0) rotateX(0deg) rotateY(0deg) rotateZ(0deg);
+  }
+  28% {
+    transform: scale(2.2) translateZ(120px) rotateX(5deg) rotateY(-8deg) rotateZ(3deg);
+  }
+  65% {
+    transform: scale(7.5) translateZ(380px) rotateX(10deg) rotateY(-13deg) rotateZ(5.5deg);
+  }
+  100% {
+    transform: scale(18) translateZ(720px) rotateX(14deg) rotateY(-16deg) rotateZ(7.5deg);
+  }
+}
+
+/* Rapid, energetic tile colour cycling during forward approach */
+.welcome-overlay.entering .tile rect,
+.welcome-overlay.opening .tile rect {
+  animation: rapidTileCycle 0.26s linear infinite !important;
+}
+
+.welcome-overlay.entering .tile-corner-tl rect,
+.welcome-overlay.opening .tile-corner-tl rect { animation-delay: 0.00s !important; }
+
+.welcome-overlay.entering .tile-up rect,
+.welcome-overlay.opening .tile-up rect        { animation-delay: -0.04s !important; }
+
+.welcome-overlay.entering .tile-corner-tr rect,
+.welcome-overlay.opening .tile-corner-tr rect { animation-delay: -0.08s !important; }
+
+.welcome-overlay.entering .tile-left rect,
+.welcome-overlay.opening .tile-left rect      { animation-delay: -0.12s !important; }
+
+.welcome-overlay.entering .tile-center rect,
+.welcome-overlay.opening .tile-center rect    { animation-delay: -0.16s !important; }
+
+.welcome-overlay.entering .tile-right rect,
+.welcome-overlay.opening .tile-right rect     { animation-delay: -0.20s !important; }
+
+.welcome-overlay.entering .tile-corner-bl rect,
+.welcome-overlay.opening .tile-corner-bl rect { animation-delay: -0.24s !important; }
+
+.welcome-overlay.entering .tile-down rect,
+.welcome-overlay.opening .tile-down rect      { animation-delay: -0.06s !important; }
+
+.welcome-overlay.entering .tile-corner-br rect,
+.welcome-overlay.opening .tile-corner-br rect { animation-delay: -0.18s !important; }
+
+@keyframes rapidTileCycle {
+  0%    { fill: #FFFFFF; }
+  16.6% { fill: #C41E3A; }
+  33.3% { fill: #0051BA; }
+  50.0% { fill: #FFD500; }
+  66.6% { fill: #FF5800; }
+  83.3% { fill: #009E60; }
+  100%  { fill: #FFFFFF; }
+}
+
+/* Subtle tile separation/expansion outward as cube acts as portal */
+.welcome-overlay.entering .tile,
+.welcome-overlay.opening .tile {
+  transition: transform 1.85s cubic-bezier(0.22, 1, 0.36, 1) !important;
+}
+
+.welcome-overlay.entering .tile-up,
+.welcome-overlay.opening .tile-up {
+  transform: translateY(-38px) rotate(-4deg);
+}
+
+.welcome-overlay.entering .tile-down,
+.welcome-overlay.opening .tile-down {
+  transform: translateY(38px) rotate(4deg);
+}
+
+.welcome-overlay.entering .tile-left,
+.welcome-overlay.opening .tile-left {
+  transform: translateX(-38px) rotate(4deg);
+}
+
+.welcome-overlay.entering .tile-right,
+.welcome-overlay.opening .tile-right {
+  transform: translateX(38px) rotate(-4deg);
+}
+
+.welcome-overlay.entering .tile-center,
+.welcome-overlay.opening .tile-center {
+  transform: scale(1.15);
+}
+
+.welcome-overlay.entering .tile-corner-tl,
+.welcome-overlay.opening .tile-corner-tl {
+  transform: translate(-34px, -34px) rotate(-8deg);
+}
+
+.welcome-overlay.entering .tile-corner-tr,
+.welcome-overlay.opening .tile-corner-tr {
+  transform: translate(34px, -34px) rotate(8deg);
+}
+
+.welcome-overlay.entering .tile-corner-bl,
+.welcome-overlay.opening .tile-corner-bl {
+  transform: translate(-34px, 34px) rotate(8deg);
+}
+
+.welcome-overlay.entering .tile-corner-br,
+.welcome-overlay.opening .tile-corner-br {
+  transform: translate(34px, 34px) rotate(-8deg);
+}
+
+/* User-Controlled Entry Button */
+.welcome-enter-btn {
+  margin-top: 2.5rem;
+  background: var(--c-sandstone, #8A724C);
+  color: #FFFFFF !important;
+  border: 1px solid var(--c-sandstone, #8A724C);
+  padding: 0.85rem 2.2rem;
+  font-size: 1.05rem;
+  font-family: var(--font-sans, sans-serif);
+  font-weight: 600;
+  border-radius: 50px;
+  cursor: pointer;
+  opacity: 0;
+  animation: welcomeFadeInUp 0.6s 0.8s forwards;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 18px rgba(138, 114, 76, 0.28);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  user-select: none;
+}
+
+.welcome-enter-btn:hover {
+  background: #735E3D;
+  border-color: #735E3D;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(138, 114, 76, 0.38);
+}
+
+.welcome-enter-btn:active,
+.welcome-enter-btn.btn-clicked {
+  transform: translateY(0);
+  box-shadow: 0 2px 10px rgba(138, 114, 76, 0.2);
+  opacity: 0.9;
+}
+
+.welcome-enter-btn:focus-visible {
+  outline: 3px solid var(--c-amber, #B99668);
+  outline-offset: 4px;
+}
+
+/* Reduced Motion Override */
+@media (prefers-reduced-motion: reduce) {
+  .welcome-overlay {
+    transition: opacity 0.25s ease !important;
+  }
+  .welcome-cube-svg,
+  .welcome-title-wrapper,
+  .welcome-enter-btn,
+  .tile,
+  .tile rect {
+    animation: none !important;
+    transition: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .welcome-title {
+    font-size: 2.6rem;
+  }
+  .welcome-cube-svg {
+    width: 170px;
+    height: 170px;
+  }
+  .welcome-enter-btn {
+    padding: 0.75rem 1.8rem;
+    font-size: 0.95rem;
+  }
+}

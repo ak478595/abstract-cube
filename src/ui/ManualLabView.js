@@ -1,15 +1,14 @@
 /**
  * ManualLabView - Manual Cube Lab Interface
- * Implements Section 6 & Section 8 of the specification:
- * - Dark immersive theme with interactive background.
- * - Left column: 3D cube + move history bar below it.
- * - Right column: Latest-move telemetry, 18 face move buttons, session controls (Start Session, End Session, Undo, Redo, Reset Cube, Reset View).
- * - Real-time Abstract Algebra permutation analyzer showing corner cycles, edge cycles, parity, and element order.
- * - Sticker selection HUD and direct face turn execution.
+ * Implements Section 6 & Section 8 of the specification with Batch 2 enhancements:
+ * - Fix automatic page scrolling: scroll history internally, avoid document scroll jumps.
+ * - Solve Cube action: genuine solution of current manually scrambled state via Kociemba solver.
+ * - Clear, accurate move controls and feedback.
  */
 
 import { FACE_NAMES, MOVE_DIRECTIONS } from '../core/constants.js';
 import { extractPermutationCycles } from '../core/GroupTheory.js';
+import { LogicalCube } from '../core/LogicalCube.js';
 
 export function renderManualLabView(container, {
   cubeEngine,
@@ -22,12 +21,11 @@ export function renderManualLabView(container, {
   onResetView,
   onStartSession,
   onEndSession,
-  onSelectHistory
+  onSelectHistory,
+  onSolveCube
 }) {
   container.innerHTML = `
     <div class="view-lab">
-      <canvas id="lab-bg-canvas"></canvas>
-
       <div class="lab-main-layout">
         <!-- LEFT COLUMN: 3D CUBE & MOVE HISTORY -->
         <div class="lab-viewport-column">
@@ -122,22 +120,43 @@ export function renderManualLabView(container, {
               </div>
             </div>
 
-            <!-- Session Controls -->
-            <div class="session-bar-actions" style="margin-bottom: 1.25rem;">
-              <button class="btn-action-primary" id="btn-session-toggle">
+            <!-- Session & Solve Controls -->
+            <div class="session-bar-actions" style="margin-bottom: 1.25rem; display: flex; gap: 0.75rem; flex-wrap: wrap;">
+              <button class="btn-action-primary" id="btn-session-toggle" style="flex: 1;">
                 ${sessionManager.hasActiveSession() ? 'End Session' : 'Start Session'}
               </button>
+              <button class="btn-action-primary" id="btn-manual-solve" style="flex: 1.2; background: var(--lab-success); color: #064E3B; border: 1px solid var(--lab-success);" ${logicalCube.isSolved() ? 'disabled' : ''}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align: -2px; margin-right: 4px;"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                Solve Cube
+              </button>
+            </div>
+
+            <!-- Solution Result Panel for Manual Cube Lab -->
+            <div id="manual-solution-panel" class="scramble-banner" style="display: none; border-color: var(--lab-success); margin-bottom: 1.25rem;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <span class="scramble-title-label" style="color: var(--lab-success); font-weight: 700; margin-bottom: 0;">Solution Result</span>
+                  <span id="manual-solution-count-badge" class="selected-face-badge" style="border-color: var(--lab-success); color: var(--lab-success); padding: 0.15rem 0.5rem; font-size: 0.75rem;">0 Moves</span>
+                </div>
+                <span id="manual-solution-status-badge" style="font-size: 0.8rem; font-weight: 600; color: var(--lab-accent);">Calculated</span>
+              </div>
+              <div class="scramble-text-display" id="manual-solution-seq-display" style="color: var(--lab-text); font-size: 0.95rem; margin-bottom: 0.5rem;">
+                -
+              </div>
+              <div class="solution-steps-list" id="manual-solution-steps-chips" style="max-height: 100px; padding: 0.4rem; margin-top: 0.5rem;">
+                <!-- Move badges rendered here -->
+              </div>
             </div>
 
             <!-- Face Rotation Keyboard (18 standard moves) -->
             <h4 style="font-size: 0.92rem; font-weight: 700; color: #FFF; margin-bottom: 0.75rem;">
-              Face Rotation Generators (Standard Singmaster Notation)
+              Face Rotation Generators (Standard Move Notation)
             </h4>
 
             <div class="face-controls-grid">
               <!-- Up Face -->
               <div class="face-move-cluster">
-                <div class="face-cluster-header"><span>U (Up / White)</span></div>
+                <div class="face-cluster-header"><span>U (Up)</span></div>
                 <div class="face-btn-row">
                   <button class="btn-move" data-move="U" title="Up clockwise (90°)">U</button>
                   <button class="btn-move" data-move="U'" title="Up counterclockwise (-90°)">U′</button>
@@ -147,7 +166,7 @@ export function renderManualLabView(container, {
 
               <!-- Down Face -->
               <div class="face-move-cluster">
-                <div class="face-cluster-header"><span>D (Down / Yellow)</span></div>
+                <div class="face-cluster-header"><span>D (Down)</span></div>
                 <div class="face-btn-row">
                   <button class="btn-move" data-move="D" title="Down clockwise (90°)">D</button>
                   <button class="btn-move" data-move="D'" title="Down counterclockwise (-90°)">D′</button>
@@ -157,7 +176,7 @@ export function renderManualLabView(container, {
 
               <!-- Front Face -->
               <div class="face-move-cluster">
-                <div class="face-cluster-header"><span>F (Front / Green)</span></div>
+                <div class="face-cluster-header"><span>F (Front)</span></div>
                 <div class="face-btn-row">
                   <button class="btn-move" data-move="F" title="Front clockwise (90°)">F</button>
                   <button class="btn-move" data-move="F'" title="Front counterclockwise (-90°)">F′</button>
@@ -167,7 +186,7 @@ export function renderManualLabView(container, {
 
               <!-- Back Face -->
               <div class="face-move-cluster">
-                <div class="face-cluster-header"><span>B (Back / Blue)</span></div>
+                <div class="face-cluster-header"><span>B (Back)</span></div>
                 <div class="face-btn-row">
                   <button class="btn-move" data-move="B" title="Back clockwise (90°)">B</button>
                   <button class="btn-move" data-move="B'" title="Back counterclockwise (-90°)">B′</button>
@@ -177,7 +196,7 @@ export function renderManualLabView(container, {
 
               <!-- Left Face -->
               <div class="face-move-cluster">
-                <div class="face-cluster-header"><span>L (Left / Orange)</span></div>
+                <div class="face-cluster-header"><span>L (Left)</span></div>
                 <div class="face-btn-row">
                   <button class="btn-move" data-move="L" title="Left clockwise (90°)">L</button>
                   <button class="btn-move" data-move="L'" title="Left counterclockwise (-90°)">L′</button>
@@ -187,7 +206,7 @@ export function renderManualLabView(container, {
 
               <!-- Right Face -->
               <div class="face-move-cluster">
-                <div class="face-cluster-header"><span>R (Right / Red)</span></div>
+                <div class="face-cluster-header"><span>R (Right)</span></div>
                 <div class="face-btn-row">
                   <button class="btn-move" data-move="R" title="Right clockwise (90°)">R</button>
                   <button class="btn-move" data-move="R'" title="Right counterclockwise (-90°)">R′</button>
@@ -241,18 +260,96 @@ export function renderManualLabView(container, {
     cubeEngine.onResize();
   }
 
-  // Bind Buttons
+  // Bind Move Buttons
   container.querySelectorAll('.btn-move').forEach((btn) => {
     btn.addEventListener('click', () => {
+      clearManualSolution();
       const move = btn.getAttribute('data-move');
       onExecuteMove(move);
     });
   });
 
   container.querySelector('#btn-reset-view')?.addEventListener('click', () => onResetView());
-  container.querySelector('#btn-reset-cube')?.addEventListener('click', () => onResetCube());
-  container.querySelector('#btn-undo-move')?.addEventListener('click', () => onUndo());
-  container.querySelector('#btn-redo-move')?.addEventListener('click', () => onRedo());
+  container.querySelector('#btn-reset-cube')?.addEventListener('click', () => { clearManualSolution(); onResetCube(); });
+  container.querySelector('#btn-undo-move')?.addEventListener('click', () => { clearManualSolution(); onUndo(); });
+  container.querySelector('#btn-redo-move')?.addEventListener('click', () => { clearManualSolution(); onRedo(); });
+
+  // Manual Solution Panel Elements
+  const manualSolveBtn = container.querySelector('#btn-manual-solve');
+  const manualSolutionPanel = container.querySelector('#manual-solution-panel');
+  const manualSolutionSeqDisplay = container.querySelector('#manual-solution-seq-display');
+  const manualSolutionCountBadge = container.querySelector('#manual-solution-count-badge');
+  const manualSolutionStatusBadge = container.querySelector('#manual-solution-status-badge');
+  const manualSolutionStepsChips = container.querySelector('#manual-solution-steps-chips');
+
+  let activeManualSolution = [];
+  let manualSolutionStepIndex = 0;
+
+  function renderManualSolutionBadges() {
+    if (!manualSolutionStepsChips) return;
+    manualSolutionStepsChips.innerHTML = activeManualSolution.map((move, i) => {
+      let cls = 'solution-step-badge';
+      if (i < manualSolutionStepIndex) cls += ' completed-step';
+      else if (i === manualSolutionStepIndex) cls += ' current-step';
+      return `<span class="${cls}">#${i + 1} ${move}</span>`;
+    }).join('');
+  }
+
+  function clearManualSolution() {
+    if (manualSolutionPanel) manualSolutionPanel.style.display = 'none';
+    activeManualSolution = [];
+    manualSolutionStepIndex = 0;
+  }
+
+  manualSolveBtn?.addEventListener('click', async () => {
+    if (logicalCube.isSolved()) {
+      alert('The cube is already solved in the identity state e!');
+      return;
+    }
+    if (cubeEngine.isAnimating) return;
+
+    manualSolveBtn.disabled = true;
+    manualSolutionPanel.style.display = 'block';
+    manualSolutionStatusBadge.textContent = 'Calculating...';
+    manualSolutionStatusBadge.style.color = 'var(--lab-accent)';
+    manualSolutionSeqDisplay.textContent = 'Computing optimal solution sequence...';
+    manualSolutionCountBadge.textContent = 'Solving...';
+    manualSolutionStepsChips.innerHTML = '';
+
+    if (typeof onSolveCube === 'function') {
+      await onSolveCube({
+        onSolutionReady: (moves) => {
+          activeManualSolution = moves;
+          manualSolutionStepIndex = 0;
+          manualSolutionCountBadge.textContent = `${moves.length} Moves`;
+          manualSolutionSeqDisplay.textContent = moves.join(' ');
+          manualSolutionStatusBadge.textContent = 'Executing Solution...';
+          manualSolutionStatusBadge.style.color = 'var(--lab-accent)';
+          renderManualSolutionBadges();
+        },
+        onMoveStep: (stepIdx, move) => {
+          manualSolutionStepIndex = stepIdx;
+          renderManualSolutionBadges();
+        },
+        onStatus: (msg) => {
+          manualSolutionStatusBadge.textContent = msg;
+        },
+        onFinish: (success, moves) => {
+          if (success) {
+            manualSolutionStepIndex = activeManualSolution.length;
+            renderManualSolutionBadges();
+            manualSolutionStatusBadge.textContent = '✓ Solved (State Verified)';
+            manualSolutionStatusBadge.style.color = 'var(--lab-success)';
+          } else {
+            manualSolutionStatusBadge.textContent = 'Solve Failed';
+            manualSolutionStatusBadge.style.color = 'var(--lab-error)';
+          }
+          manualSolveBtn.disabled = logicalCube.isSolved() || cubeEngine.isAnimating;
+          updateTelemetry();
+        }
+      });
+    }
+  });
 
   // Session start/end
   const sessionBtn = container.querySelector('#btn-session-toggle');
@@ -274,6 +371,7 @@ export function renderManualLabView(container, {
     const faceEl = container.querySelector('#hud-selected-face');
     const typeEl = container.querySelector('#hud-cubie-type');
     const actionsGroup = container.querySelector('#hud-actions-group');
+    if (!faceEl || !typeEl || !actionsGroup) return;
 
     if (selection) {
       activeSelectedFace = selection.currentFace;
@@ -304,6 +402,7 @@ export function renderManualLabView(container, {
 
   // Helper to refresh UI telemetry & group theory panel
   function updateTelemetry() {
+    if (!container || !container.querySelector('#math-corner-cycles')) return;
     const latest = sessionManager.getLatestMove();
     const moveEl = container.querySelector('#telemetry-move');
     const faceEl = container.querySelector('#telemetry-face');
@@ -330,6 +429,11 @@ export function renderManualLabView(container, {
     statusDot.className = `status-indicator ${solved ? '' : 'unsolved'}`;
     statusLabel.textContent = solved ? 'Cube State: Solved (Identity e)' : 'Cube State: Permuted';
 
+    // Solve Cube button state
+    if (manualSolveBtn) {
+      manualSolveBtn.disabled = solved || cubeEngine.isAnimating;
+    }
+
     // Undo/Redo button states
     const undoBtn = container.querySelector('#btn-undo-move');
     const redoBtn = container.querySelector('#btn-redo-move');
@@ -345,7 +449,7 @@ export function renderManualLabView(container, {
     container.querySelector('#math-parity').textContent = `${analysis.cornerParity}, ${analysis.edgeParity}`;
     container.querySelector('#math-element-order').textContent = `${analysis.totalOrder}`;
 
-    // Render History Rail
+    // Render History Rail in place without triggering window/document scrolling
     const historyContainer = container.querySelector('#history-chip-container');
     const history = sessionManager.getHistory();
     const ptr = sessionManager.historyPointer;
@@ -370,10 +474,14 @@ export function renderManualLabView(container, {
           onSelectHistory(idx);
         });
       });
-      // Scroll to active chip
+
+      // Scroll the history container horizontally ONLY (prevent window page scroll)
       const activeChip = historyContainer.querySelector('.active-pointer');
       if (activeChip) {
-        activeChip.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+        const chipLeft = activeChip.offsetLeft;
+        const chipWidth = activeChip.offsetWidth;
+        const containerWidth = historyContainer.clientWidth;
+        historyContainer.scrollLeft = chipLeft - (containerWidth / 2) + (chipWidth / 2);
       }
     }
   }
@@ -384,4 +492,9 @@ export function renderManualLabView(container, {
   };
 
   updateTelemetry();
+
+  return () => {
+    sessionManager.options.onHistoryChanged = null;
+    cubeEngine.options.onStickerSelected = null;
+  };
 }

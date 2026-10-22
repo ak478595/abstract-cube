@@ -3,13 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CubeLab — Interactive Rubik’s Cube & Abstract Algebra</title>
+  <title>Cube Simulator — Interactive Rubik’s Cube & Abstract Algebra</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./src/styles/main.css">
 </head>
 <body>
+  <!-- Global Animated Cubes Background Layer (Active on all non-home views) -->
+  <div id="cubes-bg-layer" class="cubes-background-wrapper" aria-hidden="true"></div>
+
   <!-- Global Navigation Header -->
   <header class="site-header">
     <div class="header-container">
@@ -19,7 +22,7 @@
           <span></span><span></span><span></span>
           <span></span><span></span><span></span>
         </div>
-        <span class="logo-title">CubeLab</span>
+        <span class="logo-title">Cube Simulator</span>
       </a>
 
       <nav>
@@ -40,10 +43,10 @@
   <!-- Global Footer -->
   <footer class="site-footer">
     <p>
-      <strong>CubeLab</strong> &bull; A Mathematical Rubik’s Cube Visualization Platform for Undergraduate Abstract Algebra.
+      <strong>Cube Simulator</strong> &bull; A Mathematical Rubik’s Cube Visualization Platform.
     </p>
     <p style="margin-top: 0.5rem; font-size: 0.82rem; opacity: 0.8;">
-      Department of Mathematics, Vellore Institute of Technology &bull; Syllabus TMAT302L &bull; God’s Number: 20 Moves (HTM)
+      Department of Mathematics, Vellore Institute of Technology
     </p>
   </footer>
 
@@ -53,4 +56,3 @@
   <script type="module" src="./src/main.js"></script>
 </body>
 </html>
-

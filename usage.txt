@@ -1,0 +1,29 @@
+// CREDIT
+// Component inspired from Can Tastemel's original work for the lambda.ai landing page
+// https://cantastemel.com
+
+import Cubes from './Cubes'
+
+<div style={{ height: '600px', position: 'relative' }}>
+  <Cubes
+    gridSize={10}
+    faceColor="#120f17"
+    edgeColor="#ffffff"
+    maxAngle={45}
+    radius={3}
+    rippleColor="#ffffff"
+    gap={0.18}
+    edgeStyle="solid"
+    edgeWidth={1}
+    faceOpacity={1}
+    shading={0.6}
+    perspective={0}
+    speed={1}
+    bounce={0.4}
+    brush={1}
+    rippleSpeed={1}
+    autoAnimate
+    rippleOnClick
+    intro
+/>
+</div>

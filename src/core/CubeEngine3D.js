@@ -40,6 +40,7 @@ export class CubeEngine3D {
     // Animation queue and state
     this.isAnimating = false;
     this.moveQueue = [];
+    this.currentRafId = null;
     this.pivotGroup = new THREE.Group();
 
     // Sticker selection
@@ -337,15 +338,23 @@ export class CubeEngine3D {
     this.highlightMesh.visible = true;
 
     if (typeof this.options.onStickerSelected === 'function') {
-      this.options.onStickerSelected(this.selectedSticker);
+      try {
+        this.options.onStickerSelected(this.selectedSticker);
+      } catch (err) {
+        console.warn('CubeEngine: Error in onStickerSelected:', err);
+      }
     }
   }
 
   clearSelection() {
     this.selectedSticker = null;
-    this.highlightMesh.visible = false;
+    if (this.highlightMesh) this.highlightMesh.visible = false;
     if (typeof this.options.onStickerSelected === 'function') {
-      this.options.onStickerSelected(null);
+      try {
+        this.options.onStickerSelected(null);
+      } catch (err) {
+        console.warn('CubeEngine: Error in onStickerSelected:', err);
+      }
     }
   }
 
@@ -491,13 +500,14 @@ export class CubeEngine3D {
       this.pivotGroup.setRotationFromAxisAngle(axis, totalAngle * ease);
 
       if (progress < 1.0) {
-        requestAnimationFrame(animateStep);
+        this.currentRafId = requestAnimationFrame(animateStep);
       } else {
+        this.currentRafId = null;
         this.finishRotation(activeCubies, axis, totalAngle, onComplete);
       }
     };
 
-    requestAnimationFrame(animateStep);
+    this.currentRafId = requestAnimationFrame(animateStep);
   }
 
   finishRotation(activeCubies, axis, totalAngle, onComplete) {
@@ -545,8 +555,22 @@ export class CubeEngine3D {
    * Resets all cubies back to standard identity positions and orientations
    */
   resetToIdentity() {
+    if (this.currentRafId) {
+      cancelAnimationFrame(this.currentRafId);
+      this.currentRafId = null;
+    }
+
+    const pendingQueue = this.moveQueue;
     this.moveQueue = [];
     this.isAnimating = false;
+
+    // Resolve any pending promises so callers awaiting them are never stuck hanging
+    for (const item of pendingQueue) {
+      if (typeof item.resolve === 'function') {
+        item.resolve();
+      }
+    }
+
     this.clearSelection();
 
     for (const cubie of this.cubies) {

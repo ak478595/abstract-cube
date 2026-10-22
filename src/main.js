@@ -1,5 +1,5 @@
 /**
- * CubeLab Application Orchestrator
+ * Cube Simulator Application Orchestrator
  */
 
 import { LogicalCube } from './core/LogicalCube.js';
@@ -8,20 +8,24 @@ import { SessionManager } from './core/SessionManager.js';
 import { renderHomepage } from './ui/Homepage.js';
 import { renderManualLabView } from './ui/ManualLabView.js';
 import { renderAutomaticSolverView } from './ui/AutomaticSolverView.js';
-import { LabBackground } from './ui/LabBackground.js';
+import { renderAbstractAlgebraView } from './ui/AbstractAlgebraView.js';
+import { renderAboutView } from './ui/AboutView.js';
+import { CubesBackground } from './ui/CubesBackground.js';
+import { WelcomeScreen } from './ui/WelcomeScreen.js';
 
 class CubeLabApp {
   constructor() {
     this.currentView = 'home';
     this.viewport = document.getElementById('app-viewport');
     this.stageCache = document.getElementById('hidden-stage-cache');
+    this.cubesBgLayer = document.getElementById('cubes-bg-layer');
 
     // 1. Authoritative Logical State
     this.logicalCube = new LogicalCube();
 
     // 2. Pre-initialize Solver in background
     LogicalCube.ensureSolver().then(() => {
-      console.log('CubeLab: Kociemba solver tables precomputed and ready.');
+      console.log('Cube Simulator: Kociemba solver tables precomputed and ready.');
     });
 
     // 3. 3D Cube Engine
@@ -33,11 +37,27 @@ class CubeLabApp {
     // 4. Unified Session Manager
     this.sessionManager = new SessionManager(this.logicalCube);
 
-    // Background FX instance
-    this.bgEffect = null;
+    // 5. Cubes WebGL 2 Animated Background Instance
+    this.cubesBg = null;
 
+    // 6. Navigation
     this.initNavigation();
+
+    // 7. Render initial home page view
     this.navigateTo('home');
+
+    // 8. Launch Welcome Screen once on initial load (support URL param ?welcome=1 for testing)
+    this.initWelcomeScreen();
+  }
+
+  initWelcomeScreen() {
+    // Show welcome screen on every fresh page load.
+    // The welcome plays once per page load — navigating back to home does NOT
+    // replay it because initWelcomeScreen is only called from the constructor.
+    const welcome = new WelcomeScreen(() => {
+      // Callback after welcome screen finishes fading out
+    });
+    welcome.show();
   }
 
   initNavigation() {
@@ -54,20 +74,91 @@ class CubeLabApp {
     });
   }
 
+  updateCubesBackground(viewName) {
+    const isHome = viewName === 'home';
+
+    if (isHome) {
+      // Home page must NOT show the animated cube background
+      if (this.cubesBgLayer) {
+        this.cubesBgLayer.classList.remove('active');
+      }
+      if (this.cubesBg) {
+        this.cubesBg.destroy();
+        this.cubesBg = null;
+      }
+    } else {
+      // All other views (lab, solver, algebra, about) must show the background
+      if (this.cubesBgLayer) {
+        this.cubesBgLayer.classList.add('active');
+        if (!this.cubesBg) {
+          this.cubesBg = new CubesBackground(this.cubesBgLayer, {
+            gridSize: 10,
+            faceColor: '#090D16', // Sleek dark lab background
+            edgeColor: '#38BDF8', // Cyan grid borders
+            maxAngle: 45,
+            radius: 3,
+            rippleColor: '#38BDF8',
+            gap: 0.18,
+            edgeStyle: 'solid',
+            edgeWidth: 1,
+            faceOpacity: 0.82,
+            shading: 0.6,
+            perspective: 0,
+            speed: 1,
+            bounce: 0.4,
+            brush: 1,
+            rippleSpeed: 1,
+            autoAnimate: true,
+            rippleOnClick: true,
+            intro: true
+          });
+        } else {
+          this.cubesBg.wake();
+        }
+      }
+    }
+  }
+
+  scrollToSection(sectionId) {
+    const header = document.querySelector('.site-header');
+    const headerHeight = header ? header.offsetHeight : 70;
+    const el = document.getElementById(sectionId);
+    if (!el) return;
+
+    const elPos = el.getBoundingClientRect().top + window.pageYOffset;
+    const offsetPos = Math.max(0, elPos - headerHeight - 16);
+
+    window.scrollTo({
+      top: offsetPos,
+      behavior: 'smooth'
+    });
+  }
+
   navigateTo(viewName) {
+    // Quick-nav links for specific homepage sections
     if (viewName === 'about') {
-      this.navigateTo('home');
+      if (this.currentView !== 'home') {
+        this.navigateTo('home');
+      }
       setTimeout(() => {
-        document.querySelector('.site-footer')?.scrollIntoView({ behavior: 'smooth' });
-      }, 100);
+        const footer = document.querySelector('.site-footer');
+        if (footer) {
+          const header = document.querySelector('.site-header');
+          const headerHeight = header ? header.offsetHeight : 70;
+          const pos = footer.getBoundingClientRect().top + window.pageYOffset - headerHeight;
+          window.scrollTo({ top: pos, behavior: 'smooth' });
+        }
+      }, 150);
       return;
     }
 
     if (viewName === 'algebra') {
-      this.navigateTo('home');
+      if (this.currentView !== 'home') {
+        this.navigateTo('home');
+      }
       setTimeout(() => {
-        document.getElementById('section-algebra')?.scrollIntoView({ behavior: 'smooth' });
-      }, 100);
+        this.scrollToSection('section-algebra');
+      }, 150);
       return;
     }
 
@@ -79,17 +170,14 @@ class CubeLabApp {
     });
 
     // Toggle body dark mode class
-    if (viewName === 'lab' || viewName === 'solver') {
+    if (viewName !== 'home') {
       document.body.classList.add('dark-mode-active');
     } else {
       document.body.classList.remove('dark-mode-active');
     }
 
-    // Clean up previous canvas background
-    if (this.bgEffect) {
-      this.bgEffect.destroy();
-      this.bgEffect = null;
-    }
+    // Update Cubes Animated Background state
+    this.updateCubesBackground(viewName);
 
     // Detach Three.js canvas safely to stage cache before wiping DOM
     if (this.cubeEngine.renderer && this.cubeEngine.renderer.domElement.parentElement) {
@@ -113,9 +201,9 @@ class CubeLabApp {
         onResetView: () => this.cubeEngine.resetView(),
         onStartSession: () => this.sessionManager.startSession('manual'),
         onEndSession: () => this.sessionManager.endSession(),
-        onSelectHistory: (idx) => this.travelToHistoryState(idx)
+        onSelectHistory: (idx) => this.travelToHistoryState(idx),
+        onSolveCube: (callbacks) => this.handleManualSolve(callbacks)
       });
-      this.bgEffect = new LabBackground('lab-bg-canvas');
     } else if (viewName === 'solver') {
       renderAutomaticSolverView(this.viewport, {
         cubeEngine: this.cubeEngine,
@@ -124,7 +212,6 @@ class CubeLabApp {
         onExecuteMove: (move) => this.executeManualMove(move),
         onResetView: () => this.cubeEngine.resetView()
       });
-      this.bgEffect = new LabBackground('lab-bg-canvas');
     }
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -134,6 +221,33 @@ class CubeLabApp {
     if (!moveStr || this.cubeEngine.isAnimating) return;
     this.sessionManager.recordMove(moveStr);
     await this.cubeEngine.executeMove(moveStr);
+  }
+
+  async handleManualSolve({ onSolutionReady, onMoveStep, onStatus, onFinish }) {
+    if (this.logicalCube.isSolved() || this.cubeEngine.isAnimating) return;
+
+    if (onStatus) onStatus('Computing solution with Cube Solver...');
+    await LogicalCube.ensureSolver();
+
+    const solutionStr = this.logicalCube.solve();
+    if (!solutionStr) {
+      if (onStatus) onStatus('Failed: Solver was unable to compute a solution.');
+      if (onFinish) onFinish(false, null);
+      return;
+    }
+
+    const moves = solutionStr.trim().split(/\s+/).filter(Boolean);
+    if (onSolutionReady) onSolutionReady(moves);
+
+    for (let i = 0; i < moves.length; i++) {
+      const move = moves[i];
+      if (onMoveStep) onMoveStep(i, move);
+      if (onStatus) onStatus(`Executing move ${i + 1} of ${moves.length}: ${move}`);
+      this.sessionManager.recordMove(move);
+      await this.cubeEngine.executeMove(move);
+    }
+
+    if (onFinish) onFinish(true, moves);
   }
 
   async handleUndo() {

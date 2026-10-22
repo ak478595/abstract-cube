@@ -152,19 +152,27 @@ export class SessionManager {
 
   notifyHistory() {
     if (typeof this.options.onHistoryChanged === 'function') {
-      this.options.onHistoryChanged({
-        history: this.getHistory(),
-        pointer: this.historyPointer,
-        latestMove: this.getLatestMove(),
-        canUndo: this.canUndo(),
-        canRedo: this.canRedo()
-      });
+      try {
+        this.options.onHistoryChanged({
+          history: this.getHistory(),
+          pointer: this.historyPointer,
+          latestMove: this.getLatestMove(),
+          canUndo: this.canUndo(),
+          canRedo: this.canRedo()
+        });
+      } catch (err) {
+        console.warn('SessionManager: Error in onHistoryChanged callback:', err);
+      }
     }
   }
 
   notifySessionState() {
     if (typeof this.options.onSessionStateChanged === 'function') {
-      this.options.onSessionStateChanged(this.currentSession);
+      try {
+        this.options.onSessionStateChanged(this.currentSession);
+      } catch (err) {
+        console.warn('SessionManager: Error in onSessionStateChanged callback:', err);
+      }
     }
   }
 }
