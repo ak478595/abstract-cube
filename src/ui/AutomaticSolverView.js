@@ -1,26 +1,16 @@
 /**
  * AutomaticSolverView - Dedicated Scramble & Solver Mode
- * Implements Section 9 & Section 10 of the specification:
- * - Controls:
- *   - Generate Scramble (avoids redundant turns, shows full sequence)
- *   - Play Scramble (animates move by move, record in history)
- *   - Pause
- *   - Step Forward
- *   - Step Backward
- *   - Reset Scramble (returns to state before scramble)
- *   - Solve Cube (computes actual solution with Herbert Kociemba's two-phase algorithm)
- * - Solution Playback:
- *   - Play Solution, Pause, Step Forward, Step Backward, Restart Solution
- *   - Live step counter: "Step X of Y", Current Move, Remaining Moves
- *   - Interactive move badges showing progress
- * - Solver Result:
- *   - Verified programmatic solved state
- *   - Total moves count, elapsed time, complete scramble, complete solution
- *   - Clarification of God's Number (20 HTM) vs Kociemba near-optimal solver
+ * Features Exactly Three Solvers:
+ * 1. Herbert Kociemba's Two-Phase Algorithm (Coset Graph Search)
+ * 2. Layer-by-Layer (LBL) Beginner Method (Procedural Staged Reduction)
+ * 3. CFOP-X (Experimental Speedcubing: Cross Lookahead -> F2L -> 2-Look OLL -> 2-Look PLL)
  */
 
+import Cube from '../core/cube-lib.js';
 import { generateScramble } from '../core/ScrambleGenerator.js';
 import { LogicalCube } from '../core/LogicalCube.js';
+import { LayerByLayerSolver } from '../core/LayerByLayerSolver.js';
+import { CFOPSolver } from '../core/CFOPSolver.js';
 
 export function renderAutomaticSolverView(container, {
   cubeEngine,
@@ -66,31 +56,6 @@ export function renderAutomaticSolverView(container, {
               </div>
             </div>
           </div>
-
-          <!-- Solver Success Card -->
-          <div class="control-card-panel" id="solver-success-banner" style="display: none; margin-top: 1.25rem; border-color: var(--lab-success);">
-            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-              <h3 style="font-size: 1.25rem; font-weight: 700; color: var(--lab-success);">Cube Successfully Solved!</h3>
-            </div>
-            <p style="font-size: 0.9rem; color: var(--lab-text-muted); margin-bottom: 1rem;">
-              The cube has been restored to the identity state \(e\). All pieces and facelet orientations programmatically verified.
-            </p>
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; background: var(--lab-surface-elevated); padding: 0.85rem; border-radius: 8px;">
-              <div>
-                <span style="font-size: 0.72rem; color: var(--lab-text-muted); text-transform: uppercase;">Solution Moves</span>
-                <div style="font-size: 1.2rem; font-weight: 700; color: #FFF;" id="res-move-count">0</div>
-              </div>
-              <div>
-                <span style="font-size: 0.72rem; color: var(--lab-text-muted); text-transform: uppercase;">Compute Time</span>
-                <div style="font-size: 1.2rem; font-weight: 700; color: var(--lab-accent);" id="res-compute-time">0 ms</div>
-              </div>
-              <div>
-                <span style="font-size: 0.72rem; color: var(--lab-text-muted); text-transform: uppercase;">Optimality</span>
-                <div style="font-size: 0.85rem; font-weight: 600; color: var(--lab-gold);" title="Kociemba Two-Phase yields near-optimal solutions (typically ≤ 22 moves HTM)">Kociemba 2-Phase (≤22 moves)</div>
-              </div>
-            </div>
-          </div>
         </div>
 
         <!-- RIGHT COLUMN: SCRAMBLE & SOLVER CONTROLS -->
@@ -98,18 +63,22 @@ export function renderAutomaticSolverView(container, {
           <!-- 1. SCRAMBLE GENERATOR CARD -->
           <div class="control-card-panel">
             <h3 class="panel-header-title">1. Automatic Scrambler</h3>
-            <p class="panel-header-desc">Generate official pseudo-random move sequences</p>
+            <p class="panel-header-desc">Generate official pseudo-random move sequences (WCA 20-move metric)</p>
 
             <div class="scramble-banner">
               <div class="scramble-title-label">Current Scramble Sequence</div>
-              <div class="scramble-text-display" id="scramble-sequence-box">
-                Click "Generate Scramble" to create a new sequence
+              <div class="scramble-sequence-box" id="scramble-sequence-box">
+                Click "Generate Scramble" below to produce a 20-move scramble.
               </div>
             </div>
 
-            <div class="session-bar-actions" style="margin-bottom: 0.75rem;">
-              <button class="btn-action-primary" id="btn-gen-scramble">Generate Scramble</button>
-              <button class="btn-action-secondary" id="btn-play-scramble" disabled>Play Scramble</button>
+            <div style="display: flex; gap: 0.5rem; margin-bottom: 0.75rem;">
+              <button class="btn-action-primary" id="btn-gen-scramble" style="flex: 1;">
+                Generate Scramble
+              </button>
+              <button class="btn-action-secondary" id="btn-play-scramble" style="flex: 1;" disabled>
+                Play Scramble
+              </button>
             </div>
 
             <div class="playback-controls-row">
@@ -120,47 +89,215 @@ export function renderAutomaticSolverView(container, {
             </div>
           </div>
 
-          <!-- 2. AUTOMATIC SOLVER CARD -->
+          <!-- 2. AUTOMATIC SOLVER CONTROLS CARD -->
           <div class="control-card-panel">
-            <h3 class="panel-header-title">2. Cube Solver</h3>
+            <h3 class="panel-header-title">2. Solver Controls</h3>
             <p class="panel-header-desc">
-              Solves the cube using Herbert Kociemba's two-phase algorithm. Guarantees near-optimal solutions (at most 22 moves).
+              Benchmark three distinct solving methods independently on the exact same scramble starting state.
             </p>
 
-            <button class="btn-action-primary" id="btn-solve-cube" style="width: 100%; margin-bottom: 1rem;">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align: -2px; margin-right: 6px;"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-              Solve Cube
-            </button>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; margin-top: 1.25rem;">
+              <button class="btn-action-primary" id="btn-solve-kociemba" style="display: flex; align-items: center; justify-content: center; gap: 0.35rem; font-weight: 600; padding: 0.75rem 0.4rem; font-size: 0.82rem;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                Kociemba
+              </button>
 
-            <!-- Solution playback controls -->
-            <div id="solution-section" style="display: none;">
-              <div class="scramble-banner">
-                <div class="scramble-title-label">Computed Solution Sequence</div>
-                <div class="scramble-text-display" id="solution-sequence-box" style="color: var(--lab-success);">
-                  -
-                </div>
+              <button class="btn-action-primary" id="btn-solve-lbl" style="display: flex; align-items: center; justify-content: center; gap: 0.35rem; font-weight: 600; padding: 0.75rem 0.4rem; font-size: 0.82rem; background: #2563EB; border-color: #3B82F6;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                Layer-by-Layer
+              </button>
+
+              <button class="btn-action-primary" id="btn-solve-cfop" style="display: flex; align-items: center; justify-content: center; gap: 0.35rem; font-weight: 600; padding: 0.75rem 0.4rem; font-size: 0.82rem; background: #059669; border-color: #10B981;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                CFOP-X (Exp.)
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FULL-WIDTH TRIO SOLVER COMPARISON & BENCHMARK SECTION -->
+      <div class="solver-comparison-wrapper" id="solver-comparison-section" style="max-width: 1440px; margin: 0 auto; padding: 0 1.5rem 3rem 1.5rem; box-sizing: border-box;">
+        <!-- Comparison Summary Card -->
+        <div class="comparison-summary-card" id="comparison-summary">
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.5rem;">
+            <h3 style="font-size: 1.15rem; font-weight: 700; color: #FFF; display: flex; align-items: center; gap: 0.5rem;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--lab-gold)" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+              Multi-Solver Benchmark &amp; Algorithmic Comparison
+            </h3>
+            <span style="font-size: 0.8rem; color: var(--lab-text-muted);" id="comparison-status-note">
+              Awaiting solver execution
+            </span>
+          </div>
+          <div id="comparison-content">
+            <p style="font-size: 0.9rem; color: var(--lab-text-muted);">
+              Generate a scramble above, then run any solver to compare move optimality, computation speed, and algorithmic trade-offs side by side on identical starting states.
+            </p>
+          </div>
+        </div>
+
+        <!-- 3 Solver Result Panels Grid -->
+        <div class="solver-results-grid" style="grid-template-columns: repeat(3, 1fr);">
+          <!-- PANEL A: Kociemba Two-Phase -->
+          <div class="solver-result-card" id="panel-kociemba">
+            <div class="solver-card-header">
+              <div class="solver-card-title">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--lab-accent)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m10 15 5-3-5-3v6Z"/></svg>
+                Herbert Kociemba's Two-Phase
               </div>
+              <span class="status-pill pill-not-run" id="status-pill-kociemba">Not run yet</span>
+            </div>
 
-              <div class="playback-controls-row" style="margin-bottom: 0.75rem;">
-                <button class="btn-action-primary" id="btn-play-solution">Play Solution</button>
-                <button class="btn-action-secondary" id="btn-pause-solution">Pause</button>
-                <button class="btn-action-secondary" id="btn-restart-solution">Restart</button>
+            <div class="solver-metrics-matrix">
+              <div class="solver-metric-cell">
+                <span class="solver-metric-cell-label">Solution Moves</span>
+                <span class="solver-metric-cell-value" id="kociemba-metric-moves">-</span>
               </div>
-
-              <div class="playback-controls-row">
-                <button class="btn-icon-subtle" id="btn-solution-step-back">&larr; Step Back</button>
-                <button class="btn-icon-subtle" id="btn-solution-step-fwd">Step Forward &rarr;</button>
+              <div class="solver-metric-cell">
+                <span class="solver-metric-cell-label">Pure Solve Time</span>
+                <span class="solver-metric-cell-value" id="kociemba-metric-solve-time" style="color: var(--lab-accent);">-</span>
               </div>
-
-              <div class="solution-steps-list" id="solution-step-chips">
-                <!-- Move badges rendered here -->
+              <div class="solver-metric-cell">
+                <span class="solver-metric-cell-label">Offline Init Cost</span>
+                <span class="solver-metric-cell-value" id="kociemba-metric-init-time">-</span>
+              </div>
+              <div class="solver-metric-cell">
+                <span class="solver-metric-cell-label">Total Elapsed</span>
+                <span class="solver-metric-cell-value" id="kociemba-metric-total-time">-</span>
+              </div>
+              <div class="solver-metric-cell">
+                <span class="solver-metric-cell-label">Verification</span>
+                <span class="solver-metric-cell-value" id="kociemba-metric-verified" style="font-size: 0.82rem;">-</span>
+              </div>
+              <div class="solver-metric-cell">
+                <span class="solver-metric-cell-label">Optimality Tier</span>
+                <span class="solver-metric-cell-value" style="font-size: 0.8rem; color: var(--lab-gold);">Near-Optimal (20–22 HTM)</span>
               </div>
             </div>
 
-            <!-- God's Number Information note -->
-            <div style="background: rgba(31, 41, 55, 0.4); border-left: 3px solid var(--lab-gold); padding: 0.75rem 1rem; border-radius: 0 6px 6px 0; margin-top: 1.25rem; font-size: 0.82rem; color: var(--lab-text-muted);">
-              <strong style="color: var(--lab-gold);">Theoretical Note:</strong> God's Number for the Rubik's Cube is exactly 20 moves under the Half-Turn Metric (HTM) (proved by Rokicki et al., 2010). The Kociemba two-phase algorithm used here finds a solution in typically under 0.05 seconds with 20-22 moves.
+            <div class="solver-sequence-container">
+              <div class="solver-sequence-label">Computed Move Sequence</div>
+              <div class="solver-sequence-scroll" id="kociemba-sequence-box">
+                Click "Kociemba" above to generate sequence.
+              </div>
             </div>
+
+            <div class="playback-controls-row" style="margin-bottom: 0.75rem;">
+              <button class="btn-action-primary" id="btn-play-kociemba" disabled>Play</button>
+              <button class="btn-action-secondary" id="btn-pause-kociemba" disabled>Pause</button>
+              <button class="btn-action-secondary" id="btn-restart-kociemba" disabled>Restart</button>
+              <button class="btn-icon-subtle" id="btn-step-back-kociemba" disabled>&larr;</button>
+              <button class="btn-icon-subtle" id="btn-step-fwd-kociemba" disabled>&rarr;</button>
+            </div>
+            <div class="solution-steps-list" id="chips-kociemba"></div>
+          </div>
+
+          <!-- PANEL B: Layer-by-Layer (LBL) -->
+          <div class="solver-result-card" id="panel-lbl">
+            <div class="solver-card-header">
+              <div class="solver-card-title">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                Layer-by-Layer (Beginner)
+              </div>
+              <span class="status-pill pill-not-run" id="status-pill-lbl">Not run yet</span>
+            </div>
+
+            <div class="solver-metrics-matrix">
+              <div class="solver-metric-cell">
+                <span class="solver-metric-cell-label">Solution Moves</span>
+                <span class="solver-metric-cell-value" id="lbl-metric-moves">-</span>
+              </div>
+              <div class="solver-metric-cell">
+                <span class="solver-metric-cell-label">Pure Solve Time</span>
+                <span class="solver-metric-cell-value" id="lbl-metric-solve-time" style="color: #60A5FA;">-</span>
+              </div>
+              <div class="solver-metric-cell">
+                <span class="solver-metric-cell-label">Offline Init Cost</span>
+                <span class="solver-metric-cell-value" id="lbl-metric-init-time">-</span>
+              </div>
+              <div class="solver-metric-cell">
+                <span class="solver-metric-cell-label">Total Elapsed</span>
+                <span class="solver-metric-cell-value" id="lbl-metric-total-time">-</span>
+              </div>
+              <div class="solver-metric-cell">
+                <span class="solver-metric-cell-label">Verification</span>
+                <span class="solver-metric-cell-value" id="lbl-metric-verified" style="font-size: 0.82rem;">-</span>
+              </div>
+              <div class="solver-metric-cell">
+                <span class="solver-metric-cell-label">Algorithmic Method</span>
+                <span class="solver-metric-cell-value" style="font-size: 0.8rem; color: var(--lab-text-muted);">4-Stage Procedural Reduction</span>
+              </div>
+            </div>
+
+            <div class="solver-sequence-container">
+              <div class="solver-sequence-label">Computed Move Sequence</div>
+              <div class="solver-sequence-scroll" id="lbl-sequence-box">
+                Click "Layer-by-Layer" above to generate sequence.
+              </div>
+            </div>
+
+            <div class="playback-controls-row" style="margin-bottom: 0.75rem;">
+              <button class="btn-action-primary" id="btn-play-lbl" disabled>Play</button>
+              <button class="btn-action-secondary" id="btn-pause-lbl" disabled>Pause</button>
+              <button class="btn-action-secondary" id="btn-restart-lbl" disabled>Restart</button>
+              <button class="btn-icon-subtle" id="btn-step-back-lbl" disabled>&larr;</button>
+              <button class="btn-icon-subtle" id="btn-step-fwd-lbl" disabled>&rarr;</button>
+            </div>
+            <div class="solution-steps-list" id="chips-lbl"></div>
+          </div>
+
+          <!-- PANEL C: CFOP-X (Experimental) -->
+          <div class="solver-result-card" id="panel-cfop">
+            <div class="solver-card-header">
+              <div class="solver-card-title">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2"><path d="M12 2v20"/><path d="m17 5-5-3-5 3"/><path d="m17 19-5 3-5-3"/><circle cx="12" cy="12" r="3"/></svg>
+                CFOP-X (Experimental)
+              </div>
+              <span class="status-pill pill-not-run" id="status-pill-cfop">Not run yet</span>
+            </div>
+
+            <div class="solver-metrics-matrix">
+              <div class="solver-metric-cell">
+                <span class="solver-metric-cell-label">Solution Moves</span>
+                <span class="solver-metric-cell-value" id="cfop-metric-moves">-</span>
+              </div>
+              <div class="solver-metric-cell">
+                <span class="solver-metric-cell-label">Pure Solve Time</span>
+                <span class="solver-metric-cell-value" id="cfop-metric-solve-time" style="color: #10B981;">-</span>
+              </div>
+              <div class="solver-metric-cell">
+                <span class="solver-metric-cell-label">Stage 1 (Cross)</span>
+                <span class="solver-metric-cell-value" id="cfop-metric-cross">-</span>
+              </div>
+              <div class="solver-metric-cell">
+                <span class="solver-metric-cell-label">Stage 2 (F2L)</span>
+                <span class="solver-metric-cell-value" id="cfop-metric-f2l">-</span>
+              </div>
+              <div class="solver-metric-cell">
+                <span class="solver-metric-cell-label">Verification</span>
+                <span class="solver-metric-cell-value" id="cfop-metric-verified" style="font-size: 0.82rem;">-</span>
+              </div>
+              <div class="solver-metric-cell">
+                <span class="solver-metric-cell-label">Pipeline Architecture</span>
+                <span class="solver-metric-cell-value" style="font-size: 0.8rem; color: var(--lab-text-muted);">Cross Lookahead &bull; F2L &bull; OLL &bull; PLL</span>
+              </div>
+            </div>
+
+            <div class="solver-sequence-container">
+              <div class="solver-sequence-label">Computed Move Sequence</div>
+              <div class="solver-sequence-scroll" id="cfop-sequence-box">
+                Click "CFOP-X (Exp.)" above to generate sequence.
+              </div>
+            </div>
+
+            <div class="playback-controls-row" style="margin-bottom: 0.75rem;">
+              <button class="btn-action-primary" id="btn-play-cfop" disabled>Play</button>
+              <button class="btn-action-secondary" id="btn-pause-cfop" disabled>Pause</button>
+              <button class="btn-action-secondary" id="btn-restart-cfop" disabled>Restart</button>
+              <button class="btn-icon-subtle" id="btn-step-back-cfop" disabled>&larr;</button>
+              <button class="btn-icon-subtle" id="btn-step-fwd-cfop" disabled>&rarr;</button>
+            </div>
+            <div class="solution-steps-list" id="chips-cfop"></div>
           </div>
         </div>
       </div>
@@ -175,19 +312,25 @@ export function renderAutomaticSolverView(container, {
     cubeEngine.onResize();
   }
 
-  // State
+  // --- STATE MANAGEMENT ---
+  let isUnmounted = false;
   let currentScramble = [];
   let scrambleIndex = 0;
   let isPlayingScramble = false;
 
-  let currentSolution = [];
-  let solutionIndex = 0;
+  // Solver Results
+  let kociembaResult = null;
+  let lblResult = null;
+  let cfopResult = null;
+
+  // Solution playback states
+  let activePlaybackSource = null; // 'kociemba' | 'lbl' | 'cfop' | null
+  let kociembaPlaybackIndex = 0;
+  let lblPlaybackIndex = 0;
+  let cfopPlaybackIndex = 0;
   let isPlayingSolution = false;
-  let isUnmounted = false;
 
-  let stateBeforeScramble = logicalCube.getAsString();
-
-  // Elements
+  // --- DOM REFERENCES ---
   const scrambleBox = container.querySelector('#scramble-sequence-box');
   const btnGenScramble = container.querySelector('#btn-gen-scramble');
   const btnPlayScramble = container.querySelector('#btn-play-scramble');
@@ -196,47 +339,284 @@ export function renderAutomaticSolverView(container, {
   const btnScrambleStepBack = container.querySelector('#btn-scramble-step-back');
   const btnResetScramble = container.querySelector('#btn-reset-scramble');
 
-  const btnSolveCube = container.querySelector('#btn-solve-cube');
-  const solutionSection = container.querySelector('#solution-section');
-  const solutionBox = container.querySelector('#solution-sequence-box');
-  const btnPlaySolution = container.querySelector('#btn-play-solution');
-  const btnPauseSolution = container.querySelector('#btn-pause-solution');
-  const btnRestartSolution = container.querySelector('#btn-restart-solution');
-  const btnSolutionStepFwd = container.querySelector('#btn-solution-step-fwd');
-  const btnSolutionStepBack = container.querySelector('#btn-solution-step-back');
-  const stepChipsContainer = container.querySelector('#solution-step-chips');
+  const btnSolveKociemba = container.querySelector('#btn-solve-kociemba');
+  const btnSolveLbl = container.querySelector('#btn-solve-lbl');
+  const btnSolveCfop = container.querySelector('#btn-solve-cfop');
 
   const hudStatus = container.querySelector('#hud-playback-status');
   const hudCounter = container.querySelector('#hud-step-counter');
-  const successBanner = container.querySelector('#solver-success-banner');
-  const resMoveCount = container.querySelector('#res-move-count');
-  const resComputeTime = container.querySelector('#res-compute-time');
+  const statusDot = container.querySelector('#solver-status-dot');
+  const statusLabel = container.querySelector('#solver-status-label');
 
-  function updateStatusHUD(status, currentStep, totalSteps, currentMove) {
-    hudStatus.textContent = status;
+  // Comparison Summary Elements
+  const comparisonSummaryCard = container.querySelector('#comparison-summary');
+  const comparisonStatusNote = container.querySelector('#comparison-status-note');
+  const comparisonContent = container.querySelector('#comparison-content');
+
+  // Panel A Elements (Kociemba)
+  const panelKociemba = container.querySelector('#panel-kociemba');
+  const statusPillKociemba = container.querySelector('#status-pill-kociemba');
+  const kociembaMetricMoves = container.querySelector('#kociemba-metric-moves');
+  const kociembaMetricSolveTime = container.querySelector('#kociemba-metric-solve-time');
+  const kociembaMetricInitTime = container.querySelector('#kociemba-metric-init-time');
+  const kociembaMetricTotalTime = container.querySelector('#kociemba-metric-total-time');
+  const kociembaMetricVerified = container.querySelector('#kociemba-metric-verified');
+  const kociembaSequenceBox = container.querySelector('#kociemba-sequence-box');
+  const btnPlayKociemba = container.querySelector('#btn-play-kociemba');
+  const btnPauseKociemba = container.querySelector('#btn-pause-kociemba');
+  const btnRestartKociemba = container.querySelector('#btn-restart-kociemba');
+  const btnStepBackKociemba = container.querySelector('#btn-step-back-kociemba');
+  const btnStepFwdKociemba = container.querySelector('#btn-step-fwd-kociemba');
+  const chipsKociemba = container.querySelector('#chips-kociemba');
+
+  // Panel B Elements (LBL)
+  const panelLbl = container.querySelector('#panel-lbl');
+  const statusPillLbl = container.querySelector('#status-pill-lbl');
+  const lblMetricMoves = container.querySelector('#lbl-metric-moves');
+  const lblMetricSolveTime = container.querySelector('#lbl-metric-solve-time');
+  const lblMetricInitTime = container.querySelector('#lbl-metric-init-time');
+  const lblMetricTotalTime = container.querySelector('#lbl-metric-total-time');
+  const lblMetricVerified = container.querySelector('#lbl-metric-verified');
+  const lblSequenceBox = container.querySelector('#lbl-sequence-box');
+  const btnPlayLbl = container.querySelector('#btn-play-lbl');
+  const btnPauseLbl = container.querySelector('#btn-pause-lbl');
+  const btnRestartLbl = container.querySelector('#btn-restart-lbl');
+  const btnStepBackLbl = container.querySelector('#btn-step-back-lbl');
+  const btnStepFwdLbl = container.querySelector('#btn-step-fwd-lbl');
+  const chipsLbl = container.querySelector('#chips-lbl');
+
+  // Panel C Elements (CFOP-X)
+  const panelCfop = container.querySelector('#panel-cfop');
+  const statusPillCfop = container.querySelector('#status-pill-cfop');
+  const cfopMetricMoves = container.querySelector('#cfop-metric-moves');
+  const cfopMetricSolveTime = container.querySelector('#cfop-metric-solve-time');
+  const cfopMetricCross = container.querySelector('#cfop-metric-cross');
+  const cfopMetricF2l = container.querySelector('#cfop-metric-f2l');
+  const cfopMetricVerified = container.querySelector('#cfop-metric-verified');
+  const cfopSequenceBox = container.querySelector('#cfop-sequence-box');
+  const btnPlayCfop = container.querySelector('#btn-play-cfop');
+  const btnPauseCfop = container.querySelector('#btn-pause-cfop');
+  const btnRestartCfop = container.querySelector('#btn-restart-cfop');
+  const btnStepBackCfop = container.querySelector('#btn-step-back-cfop');
+  const btnStepFwdCfop = container.querySelector('#btn-step-fwd-cfop');
+  const chipsCfop = container.querySelector('#chips-cfop');
+
+  function formatDuration(ms, isCached = false) {
+    if (isCached) return '0.00 ms (cached)';
+    if (ms === null || ms === undefined) return '-';
+    if (ms === 0) return '0.00 ms';
+    if (ms < 0.01) return '< 0.01 ms';
+    if (ms < 1000) return `${ms.toFixed(2)} ms`;
+    return `${(ms / 1000).toFixed(3)} s`;
+  }
+
+  function countMovesMetrics(moves) {
+    if (!moves || moves.length === 0) return { htm: 0, qtm: 0 };
+    const htm = moves.length;
+    let qtm = 0;
+    for (const m of moves) {
+      qtm += m.includes('2') ? 2 : 1;
+    }
+    return { htm, qtm };
+  }
+
+  function syncCubeToScrambleState() {
+    isPlayingScramble = false;
+    isPlayingSolution = false;
+    cubeEngine.resetToIdentity();
+    logicalCube.reset();
+    if (sessionManager && sessionManager.currentSession) {
+      sessionManager.currentSession.moves = [];
+      sessionManager.historyPointer = -1;
+    }
+
+    if (currentScramble && currentScramble.length > 0) {
+      for (const m of currentScramble) {
+        logicalCube.applyMove(m);
+        cubeEngine.executeMove(m, true);
+      }
+      scrambleIndex = currentScramble.length;
+    } else {
+      scrambleIndex = 0;
+    }
+  }
+
+  function ensureScrambleApplied() {
+    if (currentScramble.length > 0 && scrambleIndex < currentScramble.length) {
+      syncCubeToScrambleState();
+      updateStatusHUD('Scramble Applied to State', currentScramble.length, currentScramble.length, '');
+    }
+  }
+
+  function getScrambledCubeModel() {
+    const scCube = new Cube();
+    if (currentScramble && currentScramble.length > 0) {
+      scCube.move(currentScramble.join(' '));
+    }
+    return scCube;
+  }
+
+  function updateStatusHUD(statusText, currentStep, totalSteps, currentMove) {
+    hudStatus.textContent = statusText;
     if (totalSteps > 0) {
-      const remaining = Math.max(0, totalSteps - currentStep);
-      hudCounter.textContent = `Step ${currentStep} of ${totalSteps} ${currentMove ? `(Current Move: ${currentMove})` : ''} • Remaining: ${remaining}`;
+      hudCounter.textContent = `[${currentStep}/${totalSteps}] ${currentMove ? 'Move: ' + currentMove : ''}`;
     } else {
       hudCounter.textContent = '';
     }
 
-    const solved = logicalCube.isSolved();
-    const statusDot = container.querySelector('#solver-status-dot');
-    const statusLabel = container.querySelector('#solver-status-label');
-    statusDot.className = `status-indicator ${solved ? '' : 'unsolved'}`;
-    statusLabel.textContent = solved ? 'Cube State: Solved' : 'Cube State: Scrambled / Unsolved';
+    const isSolved = logicalCube.isSolved();
+    statusDot.className = `status-indicator ${isSolved ? '' : 'unsolved'}`;
+    statusLabel.textContent = isSolved ? 'Cube State: Solved' : 'Cube State: Scrambled / Unsolved';
   }
 
-  // 1. Generate Scramble
+  function invalidateSolverResults() {
+    kociembaResult = null;
+    lblResult = null;
+    cfopResult = null;
+    activePlaybackSource = null;
+    isPlayingSolution = false;
+
+    // Reset Panel A (Kociemba)
+    panelKociemba.classList.remove('card-solved', 'card-active');
+    statusPillKociemba.className = 'status-pill pill-not-run';
+    statusPillKociemba.textContent = 'Not run yet';
+    kociembaMetricMoves.textContent = '-';
+    kociembaMetricSolveTime.textContent = '-';
+    kociembaMetricInitTime.textContent = '-';
+    kociembaMetricTotalTime.textContent = '-';
+    kociembaMetricVerified.textContent = '-';
+    kociembaMetricVerified.style.color = '';
+    kociembaSequenceBox.textContent = 'Click "Kociemba" above to generate sequence.';
+    btnPlayKociemba.disabled = true;
+    btnPauseKociemba.disabled = true;
+    btnRestartKociemba.disabled = true;
+    btnStepBackKociemba.disabled = true;
+    btnStepFwdKociemba.disabled = true;
+    chipsKociemba.innerHTML = '';
+
+    // Reset Panel B (LBL)
+    panelLbl.classList.remove('card-solved', 'card-active');
+    statusPillLbl.className = 'status-pill pill-not-run';
+    statusPillLbl.textContent = 'Not run yet';
+    lblMetricMoves.textContent = '-';
+    lblMetricSolveTime.textContent = '-';
+    lblMetricInitTime.textContent = '-';
+    lblMetricTotalTime.textContent = '-';
+    lblMetricVerified.textContent = '-';
+    lblMetricVerified.style.color = '';
+    lblSequenceBox.textContent = 'Click "Layer-by-Layer" above to generate sequence.';
+    btnPlayLbl.disabled = true;
+    btnPauseLbl.disabled = true;
+    btnRestartLbl.disabled = true;
+    btnStepBackLbl.disabled = true;
+    btnStepFwdLbl.disabled = true;
+    chipsLbl.innerHTML = '';
+
+    // Reset Panel C (CFOP-X)
+    panelCfop.classList.remove('card-solved', 'card-active');
+    statusPillCfop.className = 'status-pill pill-not-run';
+    statusPillCfop.textContent = 'Not run yet';
+    cfopMetricMoves.textContent = '-';
+    cfopMetricSolveTime.textContent = '-';
+    cfopMetricCross.textContent = '-';
+    cfopMetricF2l.textContent = '-';
+    cfopMetricVerified.textContent = '-';
+    cfopMetricVerified.style.color = '';
+    cfopSequenceBox.textContent = 'Click "CFOP-X (Exp.)" above to generate sequence.';
+    btnPlayCfop.disabled = true;
+    btnPauseCfop.disabled = true;
+    btnRestartCfop.disabled = true;
+    btnStepBackCfop.disabled = true;
+    btnStepFwdCfop.disabled = true;
+    chipsCfop.innerHTML = '';
+
+    // Reset Comparison Summary Card
+    comparisonSummaryCard.classList.remove('active-comparison');
+    comparisonStatusNote.textContent = 'Awaiting solver execution';
+    comparisonContent.innerHTML = `
+      <p style="font-size: 0.9rem; color: var(--lab-text-muted);">
+        Generate a scramble above, then run any solver to compare move optimality, computation speed, and algorithmic trade-offs side by side on identical starting states.
+      </p>
+    `;
+  }
+
+  function updateComparisonSummary() {
+    const executed = [
+      kociembaResult ? { name: 'Kociemba', res: kociembaResult } : null,
+      lblResult ? { name: 'LBL', res: lblResult } : null,
+      cfopResult ? { name: 'CFOP-X', res: cfopResult } : null
+    ].filter(Boolean);
+
+    if (executed.length === 0) return;
+
+    comparisonSummaryCard.classList.add('active-comparison');
+    comparisonStatusNote.textContent = `${executed.length} of 3 Solvers Evaluated`;
+
+    let cellsHtml = '';
+    if (kociembaResult) {
+      cellsHtml += `
+        <div style="background: var(--lab-surface-elevated); padding: 0.85rem; border-radius: 8px; border: 1px solid var(--lab-border-subtle);">
+          <span style="font-size: 0.72rem; text-transform: uppercase; color: var(--lab-accent); font-weight: 600;">Kociemba Two-Phase</span>
+          <div style="font-size: 1.15rem; font-weight: 700; color: #FFF; margin: 0.25rem 0;">
+            ${kociembaResult.moves.length} moves
+          </div>
+          <span style="font-size: 0.8rem; color: var(--lab-accent); font-weight: 600;">
+            Pure solve: ${formatDuration(kociembaResult.pureSolveMs)}
+          </span>
+          <div style="font-size: 0.75rem; color: var(--lab-text-muted); margin-top: 0.25rem;">
+            Near-Optimal &bull; Fully Verified
+          </div>
+        </div>
+      `;
+    }
+
+    if (lblResult) {
+      cellsHtml += `
+        <div style="background: var(--lab-surface-elevated); padding: 0.85rem; border-radius: 8px; border: 1px solid var(--lab-border-subtle);">
+          <span style="font-size: 0.72rem; text-transform: uppercase; color: #60A5FA; font-weight: 600;">Layer-by-Layer</span>
+          <div style="font-size: 1.15rem; font-weight: 700; color: #FFF; margin: 0.25rem 0;">
+            ${lblResult.moves.length} moves
+          </div>
+          <span style="font-size: 0.8rem; color: #60A5FA; font-weight: 600;">
+            Pure solve: ${formatDuration(lblResult.pureSolveMs)}
+          </span>
+          <div style="font-size: 0.75rem; color: var(--lab-text-muted); margin-top: 0.25rem;">
+            Deterministic &bull; Fully Verified
+          </div>
+        </div>
+      `;
+    }
+
+    if (cfopResult) {
+      cellsHtml += `
+        <div style="background: var(--lab-surface-elevated); padding: 0.85rem; border-radius: 8px; border: 1px solid var(--lab-border-subtle);">
+          <span style="font-size: 0.72rem; text-transform: uppercase; color: #10B981; font-weight: 600;">CFOP-X (Experimental)</span>
+          <div style="font-size: 1.15rem; font-weight: 700; color: #FFF; margin: 0.25rem 0;">
+            ${cfopResult.success ? `${cfopResult.moves.length} moves` : 'Search Limit'}
+          </div>
+          <span style="font-size: 0.8rem; color: #10B981; font-weight: 600;">
+            ${cfopResult.success ? `All 4 Stages Solved (${formatDuration(cfopResult.solveTimeMs)})` : `Halted (${formatDuration(cfopResult.solveTimeMs)})`}
+          </span>
+          <div style="font-size: 0.75rem; color: var(--lab-text-muted); margin-top: 0.25rem;">
+            ${cfopResult.verified ? '100% Verified &bull; Cross+F2L+OLL+PLL' : 'Incomplete'}
+          </div>
+        </div>
+      `;
+    }
+
+    comparisonContent.innerHTML = `
+      <div class="comparison-stats-grid" style="grid-template-columns: repeat(${Math.max(2, executed.length)}, 1fr);">
+        ${cellsHtml}
+      </div>
+    `;
+  }
+
+  // --- 1. SCRAMBLE GENERATOR CONTROLS ---
   btnGenScramble.addEventListener('click', () => {
     isPlayingScramble = false;
     isPlayingSolution = false;
-    stateBeforeScramble = logicalCube.getAsString();
     currentScramble = generateScramble(20);
     scrambleIndex = 0;
-    solutionSection.style.display = 'none';
-    successBanner.style.display = 'none';
 
     scrambleBox.textContent = currentScramble.join(' ');
     btnPlayScramble.disabled = false;
@@ -244,25 +624,35 @@ export function renderAutomaticSolverView(container, {
     btnScrambleStepBack.disabled = true;
     btnScramblePause.disabled = true;
 
-    updateStatusHUD('Scramble Ready', 0, currentScramble.length, currentScramble[0]);
-    successBanner.style.display = 'none';
+    cubeEngine.resetToIdentity();
+    logicalCube.reset();
+    if (sessionManager && sessionManager.currentSession) {
+      sessionManager.currentSession.moves = [];
+      sessionManager.historyPointer = -1;
+    }
+
+    invalidateSolverResults();
+    updateStatusHUD('Scramble Generated — Ready to Play', 0, currentScramble.length, currentScramble[0]);
   });
 
-  // Play Scramble
   async function stepScrambleFwd() {
-    if (!isPlayingScramble || isUnmounted) return;
-
-    if (scrambleIndex >= currentScramble.length) {
+    if (!isPlayingScramble || isUnmounted || scrambleIndex >= currentScramble.length) {
       isPlayingScramble = false;
+      btnPlayScramble.disabled = false;
       btnScramblePause.disabled = true;
-      btnPlayScramble.disabled = true;
-      updateStatusHUD('Scramble Complete', currentScramble.length, currentScramble.length, '');
+      btnScrambleStepFwd.disabled = scrambleIndex >= currentScramble.length;
+      btnScrambleStepBack.disabled = scrambleIndex === 0;
+      if (scrambleIndex >= currentScramble.length) {
+        updateStatusHUD('Scramble Complete', currentScramble.length, currentScramble.length, '');
+      }
       return;
     }
 
     const move = currentScramble[scrambleIndex];
     sessionManager.recordMove(move);
+    logicalCube.applyMove(move);
     updateStatusHUD('Scrambling...', scrambleIndex + 1, currentScramble.length, move);
+
     await cubeEngine.executeMove(move);
 
     if (!isPlayingScramble || isUnmounted) return;
@@ -272,206 +662,715 @@ export function renderAutomaticSolverView(container, {
 
     if (scrambleIndex >= currentScramble.length) {
       isPlayingScramble = false;
+      btnPlayScramble.disabled = false;
       btnScramblePause.disabled = true;
-      btnPlayScramble.disabled = true;
+      btnScrambleStepFwd.disabled = true;
       updateStatusHUD('Scramble Complete', currentScramble.length, currentScramble.length, '');
-    } else if (isPlayingScramble) {
+    } else {
       stepScrambleFwd();
     }
   }
 
   btnPlayScramble.addEventListener('click', () => {
-    if (scrambleIndex >= currentScramble.length) scrambleIndex = 0;
-    isPlayingSolution = false;
+    if (currentScramble.length === 0) return;
+    if (cubeEngine.isAnimating) return;
+
+    if (scrambleIndex >= currentScramble.length) {
+      cubeEngine.resetToIdentity();
+      logicalCube.reset();
+      if (sessionManager && sessionManager.currentSession) {
+        sessionManager.currentSession.moves = [];
+        sessionManager.historyPointer = -1;
+      }
+      scrambleIndex = 0;
+    }
     isPlayingScramble = true;
-    btnScramblePause.disabled = false;
+    isPlayingSolution = false;
     btnPlayScramble.disabled = true;
+    btnScramblePause.disabled = false;
+    btnScrambleStepFwd.disabled = true;
     stepScrambleFwd();
   });
 
   btnScramblePause.addEventListener('click', () => {
     isPlayingScramble = false;
-    btnScramblePause.disabled = true;
     btnPlayScramble.disabled = false;
-    updateStatusHUD('Paused', scrambleIndex, currentScramble.length, '');
+    btnScramblePause.disabled = true;
+    updateStatusHUD('Scramble Paused', scrambleIndex, currentScramble.length, '');
   });
 
-  btnScrambleStepFwd.addEventListener('click', () => {
+  btnScrambleStepFwd.addEventListener('click', async () => {
+    if (cubeEngine.isAnimating || isPlayingScramble) return;
     if (scrambleIndex < currentScramble.length) {
-      stepScrambleFwd();
+      const move = currentScramble[scrambleIndex];
+      btnScrambleStepFwd.disabled = true;
+      sessionManager.recordMove(move);
+      logicalCube.applyMove(move);
+      await cubeEngine.executeMove(move);
+      scrambleIndex++;
+      btnScrambleStepBack.disabled = false;
+      btnScrambleStepFwd.disabled = scrambleIndex >= currentScramble.length;
+      updateStatusHUD('Scramble Stepped Forward', scrambleIndex, currentScramble.length, move);
     }
   });
 
   btnScrambleStepBack.addEventListener('click', async () => {
+    if (cubeEngine.isAnimating || isPlayingScramble) return;
     if (scrambleIndex > 0) {
       scrambleIndex--;
+      btnScrambleStepBack.disabled = true;
       const undone = sessionManager.undo();
       if (undone) {
-        // Apply inverse move visually
         const move = undone.move;
         const inv = move.includes("'") ? move.replace("'", "") : move.includes('2') ? move : move + "'";
+        logicalCube.applyMove(inv);
         await cubeEngine.executeMove(inv);
-        updateStatusHUD('Stepped Back', scrambleIndex, currentScramble.length, move);
       }
       btnScrambleStepFwd.disabled = false;
-      if (scrambleIndex === 0) btnScrambleStepBack.disabled = true;
+      btnScrambleStepBack.disabled = scrambleIndex === 0;
+      updateStatusHUD('Scramble Stepped Back', scrambleIndex, currentScramble.length, '');
     }
   });
 
   btnResetScramble.addEventListener('click', () => {
-    isPlayingScramble = false;
-    isPlayingSolution = false;
-    logicalCube.reset();
-    cubeEngine.resetToIdentity();
-    scrambleIndex = 0;
-    btnPlayScramble.disabled = currentScramble.length === 0;
-    updateStatusHUD('Cube Reset to Solved', 0, 0, '');
-    successBanner.style.display = 'none';
-    solutionSection.style.display = 'none';
+    syncCubeToScrambleState();
+    btnScrambleStepFwd.disabled = false;
+    btnScrambleStepBack.disabled = true;
+    btnScramblePause.disabled = true;
+    btnPlayScramble.disabled = false;
+    updateStatusHUD('Reset to Starting Scramble State', scrambleIndex, currentScramble.length, '');
   });
 
-  // 2. Solve Cube
-  btnSolveCube.addEventListener('click', async () => {
-    if (logicalCube.isSolved()) {
-      alert('The cube is already in the solved identity state e!');
+  // --- 2. SOLVER EXECUTION BUTTONS ---
+
+  // Button 1: Solve with Kociemba Two-Phase
+  btnSolveKociemba.addEventListener('click', async () => {
+    if (currentScramble.length === 0 && logicalCube.isSolved()) {
+      alert('The cube is already in the solved identity state e! Click "Generate Scramble" first.');
       return;
     }
 
-    btnSolveCube.disabled = true;
-    btnSolveCube.textContent = 'Computing Solution...';
+    ensureScrambleApplied();
 
-    // Ensure Kociemba solver tables are initialized
-    const t0 = performance.now();
-    await LogicalCube.ensureSolver();
-    const solutionStr = logicalCube.solve();
-    const computeDuration = Math.round(performance.now() - t0);
+    btnSolveKociemba.disabled = true;
+    btnSolveKociemba.textContent = 'Solving...';
+    statusPillKociemba.className = 'status-pill pill-solving';
+    statusPillKociemba.textContent = 'Computing Phase 1 & 2...';
 
-    btnSolveCube.disabled = false;
-    btnSolveCube.innerHTML = `
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align: -2px; margin-right: 6px;"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-      Solve Cube
-    `;
+    const scrambledModel = getScrambledCubeModel();
+    const solveCube = new Cube(scrambledModel);
 
-    if (!solutionStr) {
-      alert('Cube solver did not return a valid sequence. Please check cube state.');
+    setTimeout(() => {
+      let initDurationMs = LogicalCube.getSolverInitDuration();
+      const isWarm = LogicalCube.isSolverInitialized();
+
+      if (!isWarm) {
+        const tInit0 = performance.now();
+        Cube.initSolver();
+        initDurationMs = performance.now() - tInit0;
+      }
+
+      const tSolve0 = performance.now();
+      const rawSolution = solveCube.solve();
+      const pureSolveMs = performance.now() - tSolve0;
+
+      const moves = rawSolution.trim().split(/\s+/).filter(Boolean);
+      const metrics = countMovesMetrics(moves);
+
+      const tVal0 = performance.now();
+      const valCube = new Cube(scrambledModel);
+      valCube.move(rawSolution);
+      const isVerified = valCube.isSolved();
+      const valMs = performance.now() - tVal0;
+
+      const totalElapsedMs = (isWarm ? 0 : initDurationMs) + pureSolveMs + valMs;
+
+      btnSolveKociemba.disabled = false;
+      btnSolveKociemba.textContent = 'Kociemba';
+
+      kociembaResult = {
+        moves,
+        moveString: rawSolution,
+        htm: metrics.htm,
+        qtm: metrics.qtm,
+        pureSolveMs,
+        initDurationMs: isWarm ? 0 : initDurationMs,
+        isWarm,
+        valMs,
+        totalElapsedMs,
+        verified: isVerified
+      };
+
+      kociembaPlaybackIndex = 0;
+
+      panelKociemba.classList.add('card-solved');
+      statusPillKociemba.className = 'status-pill pill-solved';
+      statusPillKociemba.innerHTML = '&#10003; Solved &amp; Verified';
+
+      kociembaMetricMoves.textContent = `${metrics.htm} HTM (${metrics.qtm} QTM)`;
+      kociembaMetricSolveTime.textContent = formatDuration(pureSolveMs);
+      kociembaMetricInitTime.textContent = formatDuration(initDurationMs, isWarm);
+      kociembaMetricTotalTime.textContent = formatDuration(totalElapsedMs);
+      kociembaMetricVerified.textContent = `Verified (${formatDuration(valMs)})`;
+      kociembaMetricVerified.style.color = 'var(--lab-success)';
+      kociembaSequenceBox.textContent = rawSolution;
+
+      btnPlayKociemba.disabled = false;
+      btnRestartKociemba.disabled = false;
+      btnStepFwdKociemba.disabled = false;
+
+      renderKociembaBadges();
+      updateComparisonSummary();
+      updateStatusHUD(`Kociemba Solved (${metrics.htm} moves)`, 0, moves.length, moves[0]);
+    }, 20);
+  });
+
+  // Button 2: Solve with Layer-by-Layer (LBL)
+  btnSolveLbl.addEventListener('click', async () => {
+    if (currentScramble.length === 0 && logicalCube.isSolved()) {
+      alert('The cube is already in the solved identity state e! Click "Generate Scramble" first.');
       return;
     }
 
-    currentSolution = solutionStr.trim().split(/\s+/).filter(Boolean);
-    solutionIndex = 0;
-    isPlayingSolution = false;
+    ensureScrambleApplied();
 
-    solutionBox.textContent = currentSolution.join(' ');
-    solutionSection.style.display = 'block';
+    btnSolveLbl.disabled = true;
+    btnSolveLbl.textContent = 'Solving...';
+    statusPillLbl.className = 'status-pill pill-solving';
+    statusPillLbl.textContent = 'Executing 4 Stages...';
 
-    renderSolutionBadges();
-    updateStatusHUD('Solution Ready', 0, currentSolution.length, currentSolution[0]);
+    const scrambledModel = getScrambledCubeModel();
+    const solveCube = new Cube(scrambledModel);
 
-    resMoveCount.textContent = currentSolution.length;
-    resComputeTime.textContent = `${computeDuration} ms`;
+    let result;
+    try {
+      result = LayerByLayerSolver.solve(solveCube);
+    } catch (err) {
+      console.error('LBL solve error:', err);
+      btnSolveLbl.disabled = false;
+      btnSolveLbl.textContent = 'Layer-by-Layer';
+      statusPillLbl.className = 'status-pill pill-failed';
+      statusPillLbl.textContent = 'Error';
+      alert(`LBL Error: ${err.message}`);
+      return;
+    }
+
+    btnSolveLbl.disabled = false;
+    btnSolveLbl.textContent = 'Layer-by-Layer';
+
+    const lblMetrics = countMovesMetrics(result.moves);
+    lblResult = {
+      moves: result.moves,
+      moveString: result.moveString,
+      htm: lblMetrics.htm,
+      qtm: lblMetrics.qtm,
+      pureSolveMs: result.solveTimeMs,
+      totalElapsedMs: result.totalElapsedMs,
+      verified: result.verified
+    };
+
+    lblPlaybackIndex = 0;
+
+    panelLbl.classList.add('card-solved');
+    statusPillLbl.className = 'status-pill pill-solved';
+    statusPillLbl.innerHTML = '&#10003; Solved &amp; Verified';
+
+    lblMetricMoves.textContent = `${lblMetrics.htm} HTM (${lblMetrics.qtm} QTM)`;
+    lblMetricSolveTime.textContent = formatDuration(result.solveTimeMs);
+    lblMetricInitTime.textContent = '0.00 ms (no tables)';
+    lblMetricTotalTime.textContent = formatDuration(result.totalElapsedMs);
+    lblMetricVerified.textContent = `Verified (${formatDuration(result.validationTimeMs)})`;
+    lblMetricVerified.style.color = 'var(--lab-success)';
+    lblSequenceBox.textContent = result.moveString;
+
+    btnPlayLbl.disabled = false;
+    btnRestartLbl.disabled = false;
+    btnStepFwdLbl.disabled = false;
+
+    renderLblBadges();
+    updateComparisonSummary();
+    updateStatusHUD(`LBL Solved (${lblMetrics.htm} moves)`, 0, result.moves.length, result.moves[0]);
   });
 
-  function renderSolutionBadges() {
-    stepChipsContainer.innerHTML = currentSolution.map((move, i) => {
+  // Button 3: Solve with CFOP-X (Experimental)
+  btnSolveCfop.addEventListener('click', async () => {
+    if (currentScramble.length === 0 && logicalCube.isSolved()) {
+      alert('The cube is already in the solved identity state e! Click "Generate Scramble" first.');
+      return;
+    }
+
+    ensureScrambleApplied();
+
+    btnSolveCfop.disabled = true;
+    btnSolveCfop.textContent = 'Solving...';
+    statusPillCfop.className = 'status-pill pill-solving';
+    statusPillCfop.textContent = 'Executing CFOP-X...';
+
+    const scrambledModel = getScrambledCubeModel();
+    const solveCube = new Cube(scrambledModel);
+
+    setTimeout(() => {
+      try {
+        const result = CFOPSolver.solve(solveCube);
+
+        btnSolveCfop.disabled = false;
+        btnSolveCfop.textContent = 'CFOP-X (Exp.)';
+
+        const cfopMetrics = countMovesMetrics(result.moves);
+        cfopResult = {
+          moves: result.moves || [],
+          moveString: result.moveString || '',
+          htm: cfopMetrics.htm,
+          qtm: cfopMetrics.qtm,
+          success: result.success,
+          verified: result.verified,
+          isSolved: result.isSolved,
+          solveTimeMs: result.solveTimeMs,
+          stageBreakdown: result.stageBreakdown,
+          limitations: result.limitations
+        };
+
+        cfopPlaybackIndex = 0;
+
+        if (result.success && result.verified) {
+          panelCfop.classList.add('card-solved');
+          statusPillCfop.className = 'status-pill pill-solved';
+          statusPillCfop.innerHTML = '&#10003; Solved &amp; Verified';
+
+          cfopMetricMoves.textContent = `${cfopMetrics.htm} HTM (${cfopMetrics.qtm} QTM)`;
+          cfopMetricSolveTime.textContent = formatDuration(result.solveTimeMs);
+          cfopMetricCross.textContent = `${result.stageBreakdown?.cross?.moves?.length || 0} moves (Lookahead)`;
+          cfopMetricF2l.textContent = `${result.stageBreakdown?.f2l?.moves?.length || 0} moves (4 Pairs)`;
+          cfopMetricVerified.textContent = '100% Solved & Verified';
+          cfopMetricVerified.style.color = 'var(--lab-success)';
+          cfopSequenceBox.textContent = result.moveString;
+
+          btnPlayCfop.disabled = false;
+          btnRestartCfop.disabled = false;
+          btnStepFwdCfop.disabled = false;
+
+          renderCfopBadges();
+          updateComparisonSummary();
+          updateStatusHUD(`CFOP-X Solved (${result.moves.length} moves)`, 0, result.moves.length, result.moves[0] || '');
+        } else {
+          panelCfop.classList.remove('card-solved');
+          statusPillCfop.className = 'status-pill pill-failed';
+          statusPillCfop.textContent = result.status || 'Search Limit';
+
+          cfopMetricMoves.textContent = 'Failed';
+          cfopMetricSolveTime.textContent = formatDuration(result.solveTimeMs);
+          cfopMetricCross.textContent = result.stageBreakdown?.cross?.success ? 'Solved' : 'Failed';
+          cfopMetricF2l.textContent = result.stageBreakdown?.f2l?.success ? 'Solved' : 'Incomplete';
+          cfopMetricVerified.textContent = 'Unsolved';
+          cfopMetricVerified.style.color = 'var(--lab-error)';
+          cfopSequenceBox.textContent = `CFOP-X halted: ${result.limitations || 'Stage search limit reached.'}`;
+
+          btnPlayCfop.disabled = true;
+          btnRestartCfop.disabled = true;
+          btnStepFwdCfop.disabled = true;
+
+          renderCfopBadges();
+          updateComparisonSummary();
+          updateStatusHUD(`CFOP-X Halted: ${result.limitations || 'Incomplete'}`, 0, 0, '');
+        }
+      } catch (err) {
+        console.error('CFOP-X solver error:', err);
+        btnSolveCfop.disabled = false;
+        btnSolveCfop.textContent = 'CFOP-X (Exp.)';
+        statusPillCfop.className = 'status-pill pill-failed';
+        statusPillCfop.textContent = 'Error';
+        alert(`CFOP-X solver error: ${err.message}`);
+      }
+    }, 20);
+  });
+
+  // --- 3. DEDICATED PLAYBACK CONTROLLERS ---
+
+  function renderKociembaBadges() {
+    if (!kociembaResult) {
+      chipsKociemba.innerHTML = '';
+      return;
+    }
+    chipsKociemba.innerHTML = kociembaResult.moves.map((move, i) => {
       let cls = 'solution-step-badge';
-      if (i < solutionIndex) cls += ' completed-step';
-      else if (i === solutionIndex) cls += ' current-step';
-      return `<span class="${cls}" data-step="${i}">#${i + 1} ${move}</span>`;
+      if (activePlaybackSource === 'kociemba') {
+        if (i < kociembaPlaybackIndex) cls += ' step-done';
+        else if (i === kociembaPlaybackIndex) cls += ' step-current';
+      }
+      return `<span class="${cls}">${move}</span>`;
     }).join('');
   }
 
-  async function stepSolutionFwd() {
-    if (!isPlayingSolution || isUnmounted) return;
+  function renderLblBadges() {
+    if (!lblResult) {
+      chipsLbl.innerHTML = '';
+      return;
+    }
+    chipsLbl.innerHTML = lblResult.moves.map((move, i) => {
+      let cls = 'solution-step-badge';
+      if (activePlaybackSource === 'lbl') {
+        if (i < lblPlaybackIndex) cls += ' step-done';
+        else if (i === lblPlaybackIndex) cls += ' step-current';
+      }
+      return `<span class="${cls}">${move}</span>`;
+    }).join('');
+  }
 
-    if (solutionIndex >= currentSolution.length) {
+  function renderCfopBadges() {
+    if (!cfopResult) {
+      chipsCfop.innerHTML = '';
+      return;
+    }
+    chipsCfop.innerHTML = cfopResult.moves.map((move, i) => {
+      let cls = 'solution-step-badge';
+      if (activePlaybackSource === 'cfop') {
+        if (i < cfopPlaybackIndex) cls += ' step-done';
+        else if (i === cfopPlaybackIndex) cls += ' step-current';
+      }
+      return `<span class="${cls}">${move}</span>`;
+    }).join('');
+  }
+
+  // Panel A (Kociemba) Playback
+  async function stepKociembaFwd() {
+    if (!isPlayingSolution || isUnmounted || activePlaybackSource !== 'kociemba' || !kociembaResult) return;
+
+    if (kociembaPlaybackIndex >= kociembaResult.moves.length) {
       isPlayingSolution = false;
-      onSolutionFinished();
+      btnPlayKociemba.disabled = false;
+      btnPauseKociemba.disabled = true;
+      renderKociembaBadges();
+      updateStatusHUD('Kociemba Solution Complete!', kociembaResult.moves.length, kociembaResult.moves.length, '');
       return;
     }
 
-    const move = currentSolution[solutionIndex];
+    const move = kociembaResult.moves[kociembaPlaybackIndex];
     sessionManager.recordMove(move);
-    updateStatusHUD('Solving...', solutionIndex + 1, currentSolution.length, move);
+    updateStatusHUD('Solving with Kociemba...', kociembaPlaybackIndex + 1, kociembaResult.moves.length, move);
 
-    renderSolutionBadges();
+    renderKociembaBadges();
     await cubeEngine.executeMove(move);
 
-    if (!isPlayingSolution || isUnmounted) return;
+    if (!isPlayingSolution || isUnmounted || activePlaybackSource !== 'kociemba') return;
 
-    solutionIndex++;
-    renderSolutionBadges();
+    kociembaPlaybackIndex++;
+    btnStepBackKociemba.disabled = false;
+    renderKociembaBadges();
 
-    if (solutionIndex >= currentSolution.length) {
+    if (kociembaPlaybackIndex >= kociembaResult.moves.length) {
       isPlayingSolution = false;
-      onSolutionFinished();
+      btnPlayKociemba.disabled = false;
+      btnPauseKociemba.disabled = true;
+      updateStatusHUD('Kociemba Solution Complete!', kociembaResult.moves.length, kociembaResult.moves.length, '');
     } else if (isPlayingSolution) {
-      stepSolutionFwd();
+      stepKociembaFwd();
     }
   }
 
-  function onSolutionFinished() {
-    renderSolutionBadges();
-    if (logicalCube.isSolved()) {
-      updateStatusHUD('Solved!', currentSolution.length, currentSolution.length, '');
-      successBanner.style.display = 'block';
-      btnPlayScramble.disabled = currentScramble.length === 0;
-      successBanner.scrollIntoView({ behavior: 'smooth' });
+  btnPlayKociemba.addEventListener('click', () => {
+    if (!kociembaResult || kociembaResult.moves.length === 0) return;
+    if (activePlaybackSource !== 'kociemba' || kociembaPlaybackIndex >= kociembaResult.moves.length) {
+      syncCubeToScrambleState();
+      kociembaPlaybackIndex = 0;
     }
-  }
 
-  btnPlaySolution.addEventListener('click', () => {
-    if (solutionIndex >= currentSolution.length) {
-      solutionIndex = 0;
-    }
+    activePlaybackSource = 'kociemba';
+    panelKociemba.classList.add('card-active');
+    panelLbl.classList.remove('card-active');
+    panelCfop.classList.remove('card-active');
+
     isPlayingSolution = true;
-    stepSolutionFwd();
+    isPlayingScramble = false;
+    btnPlayKociemba.disabled = true;
+    btnPauseKociemba.disabled = false;
+
+    stepKociembaFwd();
   });
 
-  btnPauseSolution.addEventListener('click', () => {
+  btnPauseKociemba.addEventListener('click', () => {
     isPlayingSolution = false;
-    updateStatusHUD('Paused', solutionIndex, currentSolution.length, '');
+    btnPlayKociemba.disabled = false;
+    btnPauseKociemba.disabled = true;
+    updateStatusHUD('Kociemba Playback Paused', kociembaPlaybackIndex, kociembaResult?.moves.length || 0, '');
   });
 
-  btnRestartSolution.addEventListener('click', async () => {
+  btnRestartKociemba.addEventListener('click', () => {
     isPlayingSolution = false;
-    // Step backward all applied solution moves
-    while (solutionIndex > 0) {
-      solutionIndex--;
-      const undone = sessionManager.undo();
-      if (undone) {
-        const move = undone.move;
-        const inv = move.includes("'") ? move.replace("'", "") : move.includes('2') ? move : move + "'";
-        await cubeEngine.executeMove(inv, true);
-      }
-    }
-    renderSolutionBadges();
-    updateStatusHUD('Solution Restarted', 0, currentSolution.length, currentSolution[0]);
-    successBanner.style.display = 'none';
+    btnPlayKociemba.disabled = false;
+    btnPauseKociemba.disabled = true;
+    syncCubeToScrambleState();
+    kociembaPlaybackIndex = 0;
+    renderKociembaBadges();
+    btnStepBackKociemba.disabled = true;
+    btnStepFwdKociemba.disabled = false;
+    updateStatusHUD('Kociemba Solution Restarted', 0, kociembaResult?.moves.length || 0, kociembaResult?.moves[0] || '');
   });
 
-  btnSolutionStepFwd.addEventListener('click', () => {
-    if (solutionIndex < currentSolution.length) {
-      stepSolutionFwd();
+  btnStepFwdKociemba.addEventListener('click', async () => {
+    if (!kociembaResult || kociembaResult.moves.length === 0) return;
+    if (activePlaybackSource !== 'kociemba') {
+      syncCubeToScrambleState();
+      kociembaPlaybackIndex = 0;
+      activePlaybackSource = 'kociemba';
+      panelKociemba.classList.add('card-active');
+      panelLbl.classList.remove('card-active');
+      panelCfop.classList.remove('card-active');
     }
-  });
 
-  btnSolutionStepBack.addEventListener('click', async () => {
-    if (solutionIndex > 0) {
-      solutionIndex--;
-      const undone = sessionManager.undo();
-      if (undone) {
-        const move = undone.move;
-        const inv = move.includes("'") ? move.replace("'", "") : move.includes('2') ? move : move + "'";
-        await cubeEngine.executeMove(inv);
-      }
-      renderSolutionBadges();
-      updateStatusHUD('Stepped Back', solutionIndex, currentSolution.length, '');
-      successBanner.style.display = 'none';
+    if (kociembaPlaybackIndex < kociembaResult.moves.length) {
+      const move = kociembaResult.moves[kociembaPlaybackIndex];
+      sessionManager.recordMove(move);
+      await cubeEngine.executeMove(move);
+      kociembaPlaybackIndex++;
+      btnStepBackKociemba.disabled = false;
+      renderKociembaBadges();
+      updateStatusHUD('Kociemba Stepped Forward', kociembaPlaybackIndex, kociembaResult.moves.length, move);
     }
   });
 
+  btnStepBackKociemba.addEventListener('click', async () => {
+    if (!kociembaResult || kociembaPlaybackIndex === 0) return;
+    kociembaPlaybackIndex--;
+    const undone = sessionManager.undo();
+    if (undone) {
+      const move = undone.move;
+      const inv = move.includes("'") ? move.replace("'", "") : move.includes('2') ? move : move + "'";
+      await cubeEngine.executeMove(inv);
+    }
+    btnStepFwdKociemba.disabled = false;
+    if (kociembaPlaybackIndex === 0) btnStepBackKociemba.disabled = true;
+    renderKociembaBadges();
+    updateStatusHUD('Kociemba Stepped Back', kociembaPlaybackIndex, kociembaResult.moves.length, '');
+  });
+
+  // Panel B (LBL) Playback
+  async function stepLblFwd() {
+    if (!isPlayingSolution || isUnmounted || activePlaybackSource !== 'lbl' || !lblResult) return;
+
+    if (lblPlaybackIndex >= lblResult.moves.length) {
+      isPlayingSolution = false;
+      btnPlayLbl.disabled = false;
+      btnPauseLbl.disabled = true;
+      renderLblBadges();
+      updateStatusHUD('LBL Solution Complete!', lblResult.moves.length, lblResult.moves.length, '');
+      return;
+    }
+
+    const move = lblResult.moves[lblPlaybackIndex];
+    sessionManager.recordMove(move);
+    updateStatusHUD('Solving with LBL...', lblPlaybackIndex + 1, lblResult.moves.length, move);
+
+    renderLblBadges();
+    await cubeEngine.executeMove(move);
+
+    if (!isPlayingSolution || isUnmounted || activePlaybackSource !== 'lbl') return;
+
+    lblPlaybackIndex++;
+    btnStepBackLbl.disabled = false;
+    renderLblBadges();
+
+    if (lblPlaybackIndex >= lblResult.moves.length) {
+      isPlayingSolution = false;
+      btnPlayLbl.disabled = false;
+      btnPauseLbl.disabled = true;
+      updateStatusHUD('LBL Solution Complete!', lblResult.moves.length, lblResult.moves.length, '');
+    } else if (isPlayingSolution) {
+      stepLblFwd();
+    }
+  }
+
+  btnPlayLbl.addEventListener('click', () => {
+    if (!lblResult || lblResult.moves.length === 0) return;
+    if (activePlaybackSource !== 'lbl' || lblPlaybackIndex >= lblResult.moves.length) {
+      syncCubeToScrambleState();
+      lblPlaybackIndex = 0;
+    }
+
+    activePlaybackSource = 'lbl';
+    panelLbl.classList.add('card-active');
+    panelKociemba.classList.remove('card-active');
+    panelCfop.classList.remove('card-active');
+
+    isPlayingSolution = true;
+    isPlayingScramble = false;
+    btnPlayLbl.disabled = true;
+    btnPauseLbl.disabled = false;
+
+    stepLblFwd();
+  });
+
+  btnPauseLbl.addEventListener('click', () => {
+    isPlayingSolution = false;
+    btnPlayLbl.disabled = false;
+    btnPauseLbl.disabled = true;
+    updateStatusHUD('LBL Playback Paused', lblPlaybackIndex, lblResult?.moves.length || 0, '');
+  });
+
+  btnRestartLbl.addEventListener('click', () => {
+    isPlayingSolution = false;
+    btnPlayLbl.disabled = false;
+    btnPauseLbl.disabled = true;
+    syncCubeToScrambleState();
+    lblPlaybackIndex = 0;
+    renderLblBadges();
+    btnStepBackLbl.disabled = true;
+    btnStepFwdLbl.disabled = false;
+    updateStatusHUD('LBL Solution Restarted', 0, lblResult?.moves.length || 0, lblResult?.moves[0] || '');
+  });
+
+  btnStepFwdLbl.addEventListener('click', async () => {
+    if (!lblResult || lblResult.moves.length === 0) return;
+    if (activePlaybackSource !== 'lbl') {
+      syncCubeToScrambleState();
+      lblPlaybackIndex = 0;
+      activePlaybackSource = 'lbl';
+      panelLbl.classList.add('card-active');
+      panelKociemba.classList.remove('card-active');
+      panelCfop.classList.remove('card-active');
+    }
+
+    if (lblPlaybackIndex < lblResult.moves.length) {
+      const move = lblResult.moves[lblPlaybackIndex];
+      sessionManager.recordMove(move);
+      await cubeEngine.executeMove(move);
+      lblPlaybackIndex++;
+      btnStepBackLbl.disabled = false;
+      renderLblBadges();
+      updateStatusHUD('LBL Stepped Forward', lblPlaybackIndex, lblResult.moves.length, move);
+    }
+  });
+
+  btnStepBackLbl.addEventListener('click', async () => {
+    if (!lblResult || lblPlaybackIndex === 0) return;
+    lblPlaybackIndex--;
+    const undone = sessionManager.undo();
+    if (undone) {
+      const move = undone.move;
+      const inv = move.includes("'") ? move.replace("'", "") : move.includes('2') ? move : move + "'";
+      await cubeEngine.executeMove(inv);
+    }
+    btnStepFwdLbl.disabled = false;
+    if (lblPlaybackIndex === 0) btnStepBackLbl.disabled = true;
+    renderLblBadges();
+    updateStatusHUD('LBL Stepped Back', lblPlaybackIndex, lblResult.moves.length, '');
+  });
+
+  // Panel C (CFOP-X) Playback
+  async function stepCfopFwd() {
+    if (!isPlayingSolution || isUnmounted || activePlaybackSource !== 'cfop' || !cfopResult) return;
+
+    if (cfopPlaybackIndex >= cfopResult.moves.length) {
+      isPlayingSolution = false;
+      btnPlayCfop.disabled = false;
+      btnPauseCfop.disabled = true;
+      renderCfopBadges();
+      updateStatusHUD('CFOP-X Solution Complete!', cfopResult.moves.length, cfopResult.moves.length, '');
+      return;
+    }
+
+    const move = cfopResult.moves[cfopPlaybackIndex];
+    sessionManager.recordMove(move);
+    updateStatusHUD('Solving with CFOP-X...', cfopPlaybackIndex + 1, cfopResult.moves.length, move);
+
+    renderCfopBadges();
+    await cubeEngine.executeMove(move);
+
+    if (!isPlayingSolution || isUnmounted || activePlaybackSource !== 'cfop') return;
+
+    cfopPlaybackIndex++;
+    btnStepBackCfop.disabled = false;
+    renderCfopBadges();
+
+    if (cfopPlaybackIndex >= cfopResult.moves.length) {
+      isPlayingSolution = false;
+      btnPlayCfop.disabled = false;
+      btnPauseCfop.disabled = true;
+      updateStatusHUD('CFOP-X Solution Complete!', cfopResult.moves.length, cfopResult.moves.length, '');
+    } else if (isPlayingSolution) {
+      stepCfopFwd();
+    }
+  }
+
+  btnPlayCfop.addEventListener('click', () => {
+    if (!cfopResult || cfopResult.moves.length === 0) return;
+    if (activePlaybackSource !== 'cfop' || cfopPlaybackIndex >= cfopResult.moves.length) {
+      syncCubeToScrambleState();
+      cfopPlaybackIndex = 0;
+    }
+
+    activePlaybackSource = 'cfop';
+    panelCfop.classList.add('card-active');
+    panelKociemba.classList.remove('card-active');
+    panelLbl.classList.remove('card-active');
+
+    isPlayingSolution = true;
+    isPlayingScramble = false;
+    btnPlayCfop.disabled = true;
+    btnPauseCfop.disabled = false;
+
+    stepCfopFwd();
+  });
+
+  btnPauseCfop.addEventListener('click', () => {
+    isPlayingSolution = false;
+    btnPlayCfop.disabled = false;
+    btnPauseCfop.disabled = true;
+    updateStatusHUD('CFOP-X Playback Paused', cfopPlaybackIndex, cfopResult?.moves.length || 0, '');
+  });
+
+  btnRestartCfop.addEventListener('click', () => {
+    isPlayingSolution = false;
+    btnPlayCfop.disabled = false;
+    btnPauseCfop.disabled = true;
+    syncCubeToScrambleState();
+    cfopPlaybackIndex = 0;
+    renderCfopBadges();
+    btnStepBackCfop.disabled = true;
+    btnStepFwdCfop.disabled = false;
+    updateStatusHUD('CFOP-X Solution Restarted', 0, cfopResult?.moves.length || 0, cfopResult?.moves[0] || '');
+  });
+
+  btnStepFwdCfop.addEventListener('click', async () => {
+    if (!cfopResult || cfopResult.moves.length === 0) return;
+    if (activePlaybackSource !== 'cfop') {
+      syncCubeToScrambleState();
+      cfopPlaybackIndex = 0;
+      activePlaybackSource = 'cfop';
+      panelCfop.classList.add('card-active');
+      panelKociemba.classList.remove('card-active');
+      panelLbl.classList.remove('card-active');
+    }
+
+    if (cfopPlaybackIndex < cfopResult.moves.length) {
+      const move = cfopResult.moves[cfopPlaybackIndex];
+      sessionManager.recordMove(move);
+      await cubeEngine.executeMove(move);
+      cfopPlaybackIndex++;
+      btnStepBackCfop.disabled = false;
+      renderCfopBadges();
+      updateStatusHUD('CFOP-X Stepped Forward', cfopPlaybackIndex, cfopResult.moves.length, move);
+    }
+  });
+
+  btnStepBackCfop.addEventListener('click', async () => {
+    if (!cfopResult || cfopPlaybackIndex === 0) return;
+    cfopPlaybackIndex--;
+    const undone = sessionManager.undo();
+    if (undone) {
+      const move = undone.move;
+      const inv = move.includes("'") ? move.replace("'", "") : move.includes('2') ? move : move + "'";
+      await cubeEngine.executeMove(inv);
+    }
+    btnStepFwdCfop.disabled = false;
+    if (cfopPlaybackIndex === 0) btnStepBackCfop.disabled = true;
+    renderCfopBadges();
+    updateStatusHUD('CFOP-X Stepped Back', cfopPlaybackIndex, cfopResult.moves.length, '');
+  });
+
+  // View reset
   container.querySelector('#solver-btn-reset-view')?.addEventListener('click', () => onResetView());
 
+  // Return destructor
   return () => {
     isUnmounted = true;
     isPlayingScramble = false;

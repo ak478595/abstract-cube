@@ -1,8 +1,11 @@
 import Cube from './cube-lib.js';
 import { FACE_OFFSETS } from './constants.js';
+import { solveLayerByLayer } from './LayerByLayerSolver.js';
+import { CFOPSolver } from './CFOPSolver.js';
 
 let isSolverReady = false;
 let solverPromise = null;
+let solverInitDurationMs = null;
 
 export class LogicalCube {
   constructor() {
@@ -17,7 +20,9 @@ export class LogicalCube {
       // Cube.initSolver() takes ~1-3s in browser / node
       setTimeout(() => {
         try {
+          const t0 = performance.now();
           Cube.initSolver();
+          solverInitDurationMs = performance.now() - t0;
           isSolverReady = true;
           resolve(true);
         } catch (e) {
@@ -32,6 +37,10 @@ export class LogicalCube {
 
   static isSolverInitialized() {
     return isSolverReady;
+  }
+
+  static getSolverInitDuration() {
+    return solverInitDurationMs;
   }
 
   reset() {
@@ -90,6 +99,24 @@ export class LogicalCube {
     }
     if (this.isSolved()) return '';
     return this.cube.solve();
+  }
+
+  solveLBL() {
+    if (this.isSolved()) return '';
+    const result = solveLayerByLayer(this.cube);
+    if (!result.verified) {
+      throw new Error(result.error || 'Layer-by-Layer solver failed to verify solution');
+    }
+    return result.moveString;
+  }
+
+  solveCFOP() {
+    if (this.isSolved()) return '';
+    const result = CFOPSolver.solve(this.cube);
+    if (!result.verified) {
+      throw new Error(result.limitations || 'CFOP-X solver failed to verify solution');
+    }
+    return result.moveString;
   }
 
   clone() {

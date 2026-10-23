@@ -8,8 +8,6 @@ import { SessionManager } from './core/SessionManager.js';
 import { renderHomepage } from './ui/Homepage.js';
 import { renderManualLabView } from './ui/ManualLabView.js';
 import { renderAutomaticSolverView } from './ui/AutomaticSolverView.js';
-import { renderAbstractAlgebraView } from './ui/AbstractAlgebraView.js';
-import { renderAboutView } from './ui/AboutView.js';
 import { CubesBackground } from './ui/CubesBackground.js';
 import { WelcomeScreen } from './ui/WelcomeScreen.js';
 
@@ -87,7 +85,7 @@ class CubeLabApp {
         this.cubesBg = null;
       }
     } else {
-      // All other views (lab, solver, algebra, about) must show the background
+      // All other views (lab, solver) must show the background
       if (this.cubesBgLayer) {
         this.cubesBgLayer.classList.add('active');
         if (!this.cubesBg) {
@@ -135,33 +133,6 @@ class CubeLabApp {
   }
 
   navigateTo(viewName) {
-    // Quick-nav links for specific homepage sections
-    if (viewName === 'about') {
-      if (this.currentView !== 'home') {
-        this.navigateTo('home');
-      }
-      setTimeout(() => {
-        const footer = document.querySelector('.site-footer');
-        if (footer) {
-          const header = document.querySelector('.site-header');
-          const headerHeight = header ? header.offsetHeight : 70;
-          const pos = footer.getBoundingClientRect().top + window.pageYOffset - headerHeight;
-          window.scrollTo({ top: pos, behavior: 'smooth' });
-        }
-      }, 150);
-      return;
-    }
-
-    if (viewName === 'algebra') {
-      if (this.currentView !== 'home') {
-        this.navigateTo('home');
-      }
-      setTimeout(() => {
-        this.scrollToSection('section-algebra');
-      }, 150);
-      return;
-    }
-
     this.currentView = viewName;
 
     // Update active nav button

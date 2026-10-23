@@ -562,6 +562,60 @@ body.dark-mode-active .nav-link-btn.active {
   color: #FFF;
 }
 
+
+
+/* Home Solver Cards Status Badges & Specs */
+.home-solver-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.25rem 0.55rem;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.home-solver-badge.status-live {
+  background: rgba(16, 185, 129, 0.15);
+  color: #065F46;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.home-solver-badge.status-planned {
+  background: rgba(217, 119, 6, 0.12);
+  color: #92400E;
+  border: 1px solid rgba(217, 119, 6, 0.3);
+}
+
+.solver-card-specs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  background: var(--c-champagne);
+  border: 1px solid var(--c-silken);
+  border-radius: 8px;
+  padding: 0.75rem 0.9rem;
+  margin-top: 0.85rem;
+  font-size: 0.85rem;
+}
+
+.spec-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.spec-label {
+  font-weight: 600;
+  color: var(--c-muted-brown);
+}
+
+.spec-val {
+  color: var(--c-dark-charcoal);
+  font-weight: 500;
+  text-align: right;
+}
+
 /* ==========================================================================
    LAB & SOLVER PAGES (IMMERSIVE DARK THEME)
    ========================================================================== */
@@ -1134,5 +1188,209 @@ body.dark-mode-active .site-footer {
   }
   .hero-title {
     font-size: 2.8rem;
+  }
+}
+
+
+/* Solver Algorithm Selector Pills & Active State */
+.btn-action-secondary.active {
+  background: var(--lab-accent) !important;
+  color: #0B0F17 !important;
+  border-color: var(--lab-accent) !important;
+  box-shadow: 0 0 12px var(--lab-accent-glow);
+}
+
+.solver-alg-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+/* Dual Solver Comparison & Result Panels */
+.solver-comparison-wrapper {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.solver-results-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+
+@media (max-width: 1100px) {
+  .solver-results-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.solver-result-card {
+  display: flex;
+  flex-direction: column;
+  background: rgba(17, 24, 39, 0.9);
+  border: 1px solid var(--lab-border);
+  border-radius: 14px;
+  padding: 1.35rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  transition: var(--transition-smooth);
+}
+
+.solver-result-card.card-solved {
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.solver-result-card.card-active {
+  border-color: rgba(56, 189, 248, 0.5);
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.15);
+}
+
+.solver-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--lab-border-subtle);
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.solver-card-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #FFF;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.status-pill {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.65rem;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--lab-border);
+  background: var(--lab-surface-elevated);
+  color: var(--lab-text-muted);
+}
+
+.status-pill.pill-not-run {
+  color: var(--lab-text-muted);
+  border-color: var(--lab-border);
+  background: rgba(31, 41, 55, 0.5);
+}
+
+.status-pill.pill-solving {
+  color: var(--lab-accent);
+  border-color: var(--lab-accent);
+  background: rgba(56, 189, 248, 0.12);
+  box-shadow: 0 0 8px var(--lab-accent-glow);
+}
+
+.status-pill.pill-solved {
+  color: var(--lab-success);
+  border-color: var(--lab-success);
+  background: rgba(16, 185, 129, 0.12);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+}
+
+.status-pill.pill-failed {
+  color: var(--lab-error);
+  border-color: var(--lab-error);
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.solver-metrics-matrix {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.65rem;
+  background: var(--lab-surface-elevated);
+  border: 1px solid var(--lab-border-subtle);
+  border-radius: 8px;
+  padding: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.solver-metric-cell {
+  display: flex;
+  flex-direction: column;
+}
+
+.solver-metric-cell-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  color: var(--lab-text-muted);
+  font-weight: 600;
+}
+
+.solver-metric-cell-value {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #FFF;
+  margin-top: 0.2rem;
+  font-family: var(--font-mono);
+}
+
+.solver-sequence-container {
+  margin-bottom: 1rem;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--lab-border);
+  border-radius: 8px;
+  padding: 0.85rem;
+}
+
+.solver-sequence-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  color: var(--lab-text-muted);
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+
+.solver-sequence-scroll {
+  font-family: var(--font-mono);
+  font-size: 0.86rem;
+  color: var(--lab-text);
+  max-height: 80px;
+  overflow-y: auto;
+  line-height: 1.4;
+  word-break: break-all;
+}
+
+.comparison-summary-card {
+  background: rgba(17, 24, 39, 0.9);
+  border: 1px solid var(--lab-border);
+  border-radius: 14px;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.comparison-summary-card.active-comparison {
+  border-color: var(--lab-accent);
+  background: linear-gradient(180deg, rgba(14, 165, 233, 0.08) 0%, rgba(17, 24, 39, 0.9) 100%);
+}
+
+.comparison-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-top: 0.85rem;
+}
+
+@media (max-width: 900px) {
+  .comparison-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }

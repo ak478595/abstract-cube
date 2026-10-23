@@ -40,8 +40,8 @@ export class CubeEngine3D {
     // Animation queue and state
     this.isAnimating = false;
     this.moveQueue = [];
-    this.currentRafId = null;
     this.pivotGroup = new THREE.Group();
+    this.currentAnimationId = 0;
 
     // Sticker selection
     this.selectedSticker = null;
@@ -67,6 +67,7 @@ export class CubeEngine3D {
     this.renderer.setSize(width, height);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.container.appendChild(this.renderer.domElement);
 
@@ -338,23 +339,15 @@ export class CubeEngine3D {
     this.highlightMesh.visible = true;
 
     if (typeof this.options.onStickerSelected === 'function') {
-      try {
-        this.options.onStickerSelected(this.selectedSticker);
-      } catch (err) {
-        console.warn('CubeEngine: Error in onStickerSelected:', err);
-      }
+      this.options.onStickerSelected(this.selectedSticker);
     }
   }
 
   clearSelection() {
     this.selectedSticker = null;
-    if (this.highlightMesh) this.highlightMesh.visible = false;
+    this.highlightMesh.visible = false;
     if (typeof this.options.onStickerSelected === 'function') {
-      try {
-        this.options.onStickerSelected(null);
-      } catch (err) {
-        console.warn('CubeEngine: Error in onStickerSelected:', err);
-      }
+      this.options.onStickerSelected(null);
     }
   }
 
@@ -491,7 +484,11 @@ export class CubeEngine3D {
     const startTime = performance.now();
     const duration = Math.abs(turns) === 2 ? this.options.animationSpeed * 1.5 : this.options.animationSpeed;
 
+    const animId = ++this.currentAnimationId;
     const animateStep = (now) => {
+      if (this.currentAnimationId !== animId) {
+        return; // Animation was cancelled or replaced
+      }
       const elapsed = now - startTime;
       const progress = Math.min(elapsed / duration, 1.0);
       // Smooth cubic ease-in-out
@@ -500,14 +497,13 @@ export class CubeEngine3D {
       this.pivotGroup.setRotationFromAxisAngle(axis, totalAngle * ease);
 
       if (progress < 1.0) {
-        this.currentRafId = requestAnimationFrame(animateStep);
+        requestAnimationFrame(animateStep);
       } else {
-        this.currentRafId = null;
         this.finishRotation(activeCubies, axis, totalAngle, onComplete);
       }
     };
 
-    this.currentRafId = requestAnimationFrame(animateStep);
+    requestAnimationFrame(animateStep);
   }
 
   finishRotation(activeCubies, axis, totalAngle, onComplete) {
@@ -555,34 +551,33 @@ export class CubeEngine3D {
    * Resets all cubies back to standard identity positions and orientations
    */
   resetToIdentity() {
-    if (this.currentRafId) {
-      cancelAnimationFrame(this.currentRafId);
-      this.currentRafId = null;
+    this.currentAnimationId++;
+    while (this.moveQueue.length > 0) {
+      const item = this.moveQueue.shift();
+      if (item && item.resolve) item.resolve();
     }
-
-    const pendingQueue = this.moveQueue;
-    this.moveQueue = [];
     this.isAnimating = false;
-
-    // Resolve any pending promises so callers awaiting them are never stuck hanging
-    for (const item of pendingQueue) {
-      if (typeof item.resolve === 'function') {
-        item.resolve();
-      }
-    }
-
     this.clearSelection();
+
+    // Detach any cubies currently held by the rotation pivot group
+    while (this.pivotGroup.children.length > 0) {
+      this.scene.add(this.pivotGroup.children[0]);
+    }
+    this.pivotGroup.rotation.set(0, 0, 0);
+    this.pivotGroup.position.set(0, 0, 0);
+    this.pivotGroup.scale.set(1, 1, 1);
+    this.pivotGroup.updateMatrixWorld(true);
 
     for (const cubie of this.cubies) {
       if (cubie.parent !== this.scene) {
-        this.scene.attach(cubie);
+        this.scene.add(cubie);
       }
       cubie.position.copy(cubie.userData.initialPos);
       cubie.rotation.set(0, 0, 0);
       cubie.quaternion.identity();
       cubie.updateMatrix();
+      cubie.updateMatrixWorld(true);
     }
-    this.pivotGroup.rotation.set(0, 0, 0);
   }
 
   resetView() {
