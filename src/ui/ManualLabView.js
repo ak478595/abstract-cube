@@ -9,6 +9,7 @@
 import { FACE_NAMES, MOVE_DIRECTIONS } from '../core/constants.js';
 import { extractPermutationCycles } from '../core/GroupTheory.js';
 import { LogicalCube } from '../core/LogicalCube.js';
+import { formatMoveHTML } from './notationFormatter.js';
 
 export function renderManualLabView(container, {
   cubeEngine,
@@ -288,10 +289,9 @@ export function renderManualLabView(container, {
   function renderManualSolutionBadges() {
     if (!manualSolutionStepsChips) return;
     manualSolutionStepsChips.innerHTML = activeManualSolution.map((move, i) => {
-      let cls = 'solution-step-badge';
-      if (i < manualSolutionStepIndex) cls += ' completed-step';
-      else if (i === manualSolutionStepIndex) cls += ' current-step';
-      return `<span class="${cls}">#${i + 1} ${move}</span>`;
+      const isCur = i === manualSolutionStepIndex;
+      const isDone = i < manualSolutionStepIndex;
+      return formatMoveHTML(move, { isCurrent: isCur, isDone });
     }).join('');
   }
 
@@ -411,7 +411,7 @@ export function renderManualLabView(container, {
 
     if (latest && MOVE_DIRECTIONS[latest.move]) {
       const info = MOVE_DIRECTIONS[latest.move];
-      moveEl.textContent = latest.move;
+      moveEl.innerHTML = formatMoveHTML(latest.move, { extraClass: 'telemetry-move-pill' });
       faceEl.textContent = info.face;
       dirEl.textContent = info.direction;
       numEl.textContent = latest.index;
@@ -464,7 +464,7 @@ export function renderManualLabView(container, {
       historyContainer.innerHTML = history.map((item, idx) => `
         <div class="history-chip ${idx === ptr ? 'active-pointer' : ''}" data-idx="${idx}" title="State after move #${item.index}: ${item.move}">
           <span class="history-chip-idx">#${item.index}</span>
-          <span>${item.move}</span>
+          ${formatMoveHTML(item.move)}
         </div>
       `).join('');
 

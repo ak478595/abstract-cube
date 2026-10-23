@@ -199,12 +199,12 @@ export function renderHomepage(container, { onNavigate, onRunExperiment }) {
         </p>
 
         <div class="notation-table-grid">
-          <div class="notation-card"><div class="notation-letter">U</div><div class="notation-desc">U (Up)</div></div>
-          <div class="notation-card"><div class="notation-letter">D</div><div class="notation-desc">D (Down)</div></div>
-          <div class="notation-card"><div class="notation-letter">F</div><div class="notation-desc">F (Front)</div></div>
-          <div class="notation-card"><div class="notation-letter">B</div><div class="notation-desc">B (Back)</div></div>
-          <div class="notation-card"><div class="notation-letter">L</div><div class="notation-desc">L (Left)</div></div>
-          <div class="notation-card"><div class="notation-letter">R</div><div class="notation-desc">R (Right)</div></div>
+          <div class="notation-card"><span class="notation-item">U (Up)</span></div>
+          <div class="notation-card"><span class="notation-item">D (Down)</span></div>
+          <div class="notation-card"><span class="notation-item">F (Front)</span></div>
+          <div class="notation-card"><span class="notation-item">B (Back)</span></div>
+          <div class="notation-card"><span class="notation-item">L (Left)</span></div>
+          <div class="notation-card"><span class="notation-item">R (Right)</span></div>
         </div>
       </section>
     </div>

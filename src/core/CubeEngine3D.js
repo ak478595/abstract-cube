@@ -358,6 +358,22 @@ export class CubeEngine3D {
   async executeMove(moveStr, instant = false) {
     if (!moveStr) return;
 
+    if (instant && !this.isAnimating && this.moveQueue.length === 0) {
+      // Execute synchronously without queue overhead to prevent race conditions during rapid state resets
+      const face = moveStr[0];
+      let turns = 1;
+      if (moveStr.includes("'")) {
+        turns = -1;
+      } else if (moveStr.includes('2')) {
+        turns = 2;
+      }
+      this.performLayerRotation(face, turns, true);
+      if (typeof this.options.onMoveComplete === 'function') {
+        this.options.onMoveComplete(moveStr);
+      }
+      return;
+    }
+
     return new Promise((resolve) => {
       this.moveQueue.push({ moveStr, instant, resolve });
       if (!this.isAnimating) {

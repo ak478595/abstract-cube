@@ -91,16 +91,16 @@ class CubeLabApp {
         if (!this.cubesBg) {
           this.cubesBg = new CubesBackground(this.cubesBgLayer, {
             gridSize: 10,
-            faceColor: '#090D16', // Sleek dark lab background
-            edgeColor: '#38BDF8', // Cyan grid borders
+            faceColor: '#F8FAFC', // Classroom crisp light background
+            edgeColor: '#CBD5E1', // High-contrast subtle slate grid borders
             maxAngle: 45,
             radius: 3,
-            rippleColor: '#38BDF8',
+            rippleColor: '#174EA6', // Deep blue ripple
             gap: 0.18,
             edgeStyle: 'solid',
             edgeWidth: 1,
-            faceOpacity: 0.82,
-            shading: 0.6,
+            faceOpacity: 0.88,
+            shading: 0.3,
             perspective: 0,
             speed: 1,
             bounce: 0.4,
@@ -140,12 +140,8 @@ class CubeLabApp {
       b.classList.toggle('active', b.getAttribute('data-target') === viewName);
     });
 
-    // Toggle body dark mode class
-    if (viewName !== 'home') {
-      document.body.classList.add('dark-mode-active');
-    } else {
-      document.body.classList.remove('dark-mode-active');
-    }
+    // Classroom Projector Light Theme: Do NOT add dark-mode-active to body
+    document.body.classList.remove('dark-mode-active');
 
     // Update Cubes Animated Background state
     this.updateCubesBackground(viewName);

@@ -11,6 +11,7 @@ import { generateScramble } from '../core/ScrambleGenerator.js';
 import { LogicalCube } from '../core/LogicalCube.js';
 import { LayerByLayerSolver } from '../core/LayerByLayerSolver.js';
 import { CFOPSolver } from '../core/CFOPSolver.js';
+import { formatMoveHTML, formatSequenceHTML } from './notationFormatter.js';
 
 export function renderAutomaticSolverView(container, {
   cubeEngine,
@@ -459,7 +460,7 @@ export function renderAutomaticSolverView(container, {
   function updateStatusHUD(statusText, currentStep, totalSteps, currentMove) {
     hudStatus.textContent = statusText;
     if (totalSteps > 0) {
-      hudCounter.textContent = `[${currentStep}/${totalSteps}] ${currentMove ? 'Move: ' + currentMove : ''}`;
+      hudCounter.innerHTML = `<span class="hud-step-badge">[${currentStep}/${totalSteps}]</span> ${currentMove ? '<span class="hud-move-label">Move:</span> ' + formatMoveHTML(currentMove, { extraClass: 'hud-current-move-badge' }) : ''}`;
     } else {
       hudCounter.textContent = '';
     }
@@ -486,7 +487,7 @@ export function renderAutomaticSolverView(container, {
     kociembaMetricTotalTime.textContent = '-';
     kociembaMetricVerified.textContent = '-';
     kociembaMetricVerified.style.color = '';
-    kociembaSequenceBox.textContent = 'Click "Kociemba" above to generate sequence.';
+    kociembaSequenceBox.innerHTML = '<span class="seq-placeholder">Click "Kociemba" above to generate sequence.</span>';
     btnPlayKociemba.disabled = true;
     btnPauseKociemba.disabled = true;
     btnRestartKociemba.disabled = true;
@@ -504,7 +505,7 @@ export function renderAutomaticSolverView(container, {
     lblMetricTotalTime.textContent = '-';
     lblMetricVerified.textContent = '-';
     lblMetricVerified.style.color = '';
-    lblSequenceBox.textContent = 'Click "Layer-by-Layer" above to generate sequence.';
+    lblSequenceBox.innerHTML = '<span class="seq-placeholder">Click "Layer-by-Layer" above to generate sequence.</span>';
     btnPlayLbl.disabled = true;
     btnPauseLbl.disabled = true;
     btnRestartLbl.disabled = true;
@@ -522,7 +523,7 @@ export function renderAutomaticSolverView(container, {
     cfopMetricF2l.textContent = '-';
     cfopMetricVerified.textContent = '-';
     cfopMetricVerified.style.color = '';
-    cfopSequenceBox.textContent = 'Click "CFOP-X (Exp.)" above to generate sequence.';
+    cfopSequenceBox.innerHTML = '<span class="seq-placeholder">Click "CFOP-X (Exp.)" above to generate sequence.</span>';
     btnPlayCfop.disabled = true;
     btnPauseCfop.disabled = true;
     btnRestartCfop.disabled = true;
@@ -555,15 +556,16 @@ export function renderAutomaticSolverView(container, {
     let cellsHtml = '';
     if (kociembaResult) {
       cellsHtml += `
-        <div style="background: var(--lab-surface-elevated); padding: 0.85rem; border-radius: 8px; border: 1px solid var(--lab-border-subtle);">
-          <span style="font-size: 0.72rem; text-transform: uppercase; color: var(--lab-accent); font-weight: 600;">Kociemba Two-Phase</span>
-          <div style="font-size: 1.15rem; font-weight: 700; color: #FFF; margin: 0.25rem 0;">
-            ${kociembaResult.moves.length} moves
+        <div class="comparison-solver-col">
+          <span class="comparison-solver-badge badge-kociemba">Kociemba Two-Phase</span>
+          <div class="comparison-move-stat">
+            <span class="stat-number">${kociembaResult.moves.length}</span>
+            <span class="stat-unit">moves</span>
           </div>
-          <span style="font-size: 0.8rem; color: var(--lab-accent); font-weight: 600;">
+          <div class="comparison-time-stat stat-kociemba">
             Pure solve: ${formatDuration(kociembaResult.pureSolveMs)}
-          </span>
-          <div style="font-size: 0.75rem; color: var(--lab-text-muted); margin-top: 0.25rem;">
+          </div>
+          <div class="comparison-meta-desc">
             Near-Optimal &bull; Fully Verified
           </div>
         </div>
@@ -572,15 +574,16 @@ export function renderAutomaticSolverView(container, {
 
     if (lblResult) {
       cellsHtml += `
-        <div style="background: var(--lab-surface-elevated); padding: 0.85rem; border-radius: 8px; border: 1px solid var(--lab-border-subtle);">
-          <span style="font-size: 0.72rem; text-transform: uppercase; color: #60A5FA; font-weight: 600;">Layer-by-Layer</span>
-          <div style="font-size: 1.15rem; font-weight: 700; color: #FFF; margin: 0.25rem 0;">
-            ${lblResult.moves.length} moves
+        <div class="comparison-solver-col">
+          <span class="comparison-solver-badge badge-lbl">Layer-by-Layer</span>
+          <div class="comparison-move-stat">
+            <span class="stat-number">${lblResult.moves.length}</span>
+            <span class="stat-unit">moves</span>
           </div>
-          <span style="font-size: 0.8rem; color: #60A5FA; font-weight: 600;">
+          <div class="comparison-time-stat stat-lbl">
             Pure solve: ${formatDuration(lblResult.pureSolveMs)}
-          </span>
-          <div style="font-size: 0.75rem; color: var(--lab-text-muted); margin-top: 0.25rem;">
+          </div>
+          <div class="comparison-meta-desc">
             Deterministic &bull; Fully Verified
           </div>
         </div>
@@ -589,15 +592,16 @@ export function renderAutomaticSolverView(container, {
 
     if (cfopResult) {
       cellsHtml += `
-        <div style="background: var(--lab-surface-elevated); padding: 0.85rem; border-radius: 8px; border: 1px solid var(--lab-border-subtle);">
-          <span style="font-size: 0.72rem; text-transform: uppercase; color: #10B981; font-weight: 600;">CFOP-X (Experimental)</span>
-          <div style="font-size: 1.15rem; font-weight: 700; color: #FFF; margin: 0.25rem 0;">
-            ${cfopResult.success ? `${cfopResult.moves.length} moves` : 'Search Limit'}
+        <div class="comparison-solver-col">
+          <span class="comparison-solver-badge badge-cfop">CFOP-X (Experimental)</span>
+          <div class="comparison-move-stat">
+            <span class="stat-number">${cfopResult.success ? cfopResult.moves.length : '—'}</span>
+            <span class="stat-unit">${cfopResult.success ? 'moves' : 'Search Limit'}</span>
           </div>
-          <span style="font-size: 0.8rem; color: #10B981; font-weight: 600;">
+          <div class="comparison-time-stat stat-cfop">
             ${cfopResult.success ? `All 4 Stages Solved (${formatDuration(cfopResult.solveTimeMs)})` : `Halted (${formatDuration(cfopResult.solveTimeMs)})`}
-          </span>
-          <div style="font-size: 0.75rem; color: var(--lab-text-muted); margin-top: 0.25rem;">
+          </div>
+          <div class="comparison-meta-desc">
             ${cfopResult.verified ? '100% Verified &bull; Cross+F2L+OLL+PLL' : 'Incomplete'}
           </div>
         </div>
@@ -618,7 +622,7 @@ export function renderAutomaticSolverView(container, {
     currentScramble = generateScramble(20);
     scrambleIndex = 0;
 
-    scrambleBox.textContent = currentScramble.join(' ');
+    scrambleBox.innerHTML = formatSequenceHTML(currentScramble);
     btnPlayScramble.disabled = false;
     btnScrambleStepFwd.disabled = false;
     btnScrambleStepBack.disabled = true;
@@ -650,7 +654,6 @@ export function renderAutomaticSolverView(container, {
 
     const move = currentScramble[scrambleIndex];
     sessionManager.recordMove(move);
-    logicalCube.applyMove(move);
     updateStatusHUD('Scrambling...', scrambleIndex + 1, currentScramble.length, move);
 
     await cubeEngine.executeMove(move);
@@ -705,7 +708,6 @@ export function renderAutomaticSolverView(container, {
       const move = currentScramble[scrambleIndex];
       btnScrambleStepFwd.disabled = true;
       sessionManager.recordMove(move);
-      logicalCube.applyMove(move);
       await cubeEngine.executeMove(move);
       scrambleIndex++;
       btnScrambleStepBack.disabled = false;
@@ -813,7 +815,7 @@ export function renderAutomaticSolverView(container, {
       kociembaMetricTotalTime.textContent = formatDuration(totalElapsedMs);
       kociembaMetricVerified.textContent = `Verified (${formatDuration(valMs)})`;
       kociembaMetricVerified.style.color = 'var(--lab-success)';
-      kociembaSequenceBox.textContent = rawSolution;
+      kociembaSequenceBox.innerHTML = formatSequenceHTML(moves);
 
       btnPlayKociemba.disabled = false;
       btnRestartKociemba.disabled = false;
@@ -821,7 +823,7 @@ export function renderAutomaticSolverView(container, {
 
       renderKociembaBadges();
       updateComparisonSummary();
-      updateStatusHUD(`Kociemba Solved (${metrics.htm} moves)`, 0, moves.length, moves[0]);
+      updateStatusHUD(`Kociemba Solution Ready (${metrics.htm} moves)`, 0, moves.length, moves[0]);
     }, 20);
   });
 
@@ -881,7 +883,7 @@ export function renderAutomaticSolverView(container, {
     lblMetricTotalTime.textContent = formatDuration(result.totalElapsedMs);
     lblMetricVerified.textContent = `Verified (${formatDuration(result.validationTimeMs)})`;
     lblMetricVerified.style.color = 'var(--lab-success)';
-    lblSequenceBox.textContent = result.moveString;
+    lblSequenceBox.innerHTML = formatSequenceHTML(result.moves);
 
     btnPlayLbl.disabled = false;
     btnRestartLbl.disabled = false;
@@ -889,7 +891,7 @@ export function renderAutomaticSolverView(container, {
 
     renderLblBadges();
     updateComparisonSummary();
-    updateStatusHUD(`LBL Solved (${lblMetrics.htm} moves)`, 0, result.moves.length, result.moves[0]);
+    updateStatusHUD(`LBL Solution Ready (${lblMetrics.htm} moves)`, 0, result.moves.length, result.moves[0]);
   });
 
   // Button 3: Solve with CFOP-X (Experimental)
@@ -943,7 +945,7 @@ export function renderAutomaticSolverView(container, {
           cfopMetricF2l.textContent = `${result.stageBreakdown?.f2l?.moves?.length || 0} moves (4 Pairs)`;
           cfopMetricVerified.textContent = '100% Solved & Verified';
           cfopMetricVerified.style.color = 'var(--lab-success)';
-          cfopSequenceBox.textContent = result.moveString;
+          cfopSequenceBox.innerHTML = formatSequenceHTML(result.moves);
 
           btnPlayCfop.disabled = false;
           btnRestartCfop.disabled = false;
@@ -951,7 +953,7 @@ export function renderAutomaticSolverView(container, {
 
           renderCfopBadges();
           updateComparisonSummary();
-          updateStatusHUD(`CFOP-X Solved (${result.moves.length} moves)`, 0, result.moves.length, result.moves[0] || '');
+          updateStatusHUD(`CFOP-X Solution Ready (${result.moves.length} moves)`, 0, result.moves.length, result.moves[0] || '');
         } else {
           panelCfop.classList.remove('card-solved');
           statusPillCfop.className = 'status-pill pill-failed';
@@ -992,12 +994,9 @@ export function renderAutomaticSolverView(container, {
       return;
     }
     chipsKociemba.innerHTML = kociembaResult.moves.map((move, i) => {
-      let cls = 'solution-step-badge';
-      if (activePlaybackSource === 'kociemba') {
-        if (i < kociembaPlaybackIndex) cls += ' step-done';
-        else if (i === kociembaPlaybackIndex) cls += ' step-current';
-      }
-      return `<span class="${cls}">${move}</span>`;
+      const isCur = activePlaybackSource === 'kociemba' && i === kociembaPlaybackIndex;
+      const isDone = activePlaybackSource === 'kociemba' && i < kociembaPlaybackIndex;
+      return formatMoveHTML(move, { isCurrent: isCur, isDone });
     }).join('');
   }
 
@@ -1007,12 +1006,9 @@ export function renderAutomaticSolverView(container, {
       return;
     }
     chipsLbl.innerHTML = lblResult.moves.map((move, i) => {
-      let cls = 'solution-step-badge';
-      if (activePlaybackSource === 'lbl') {
-        if (i < lblPlaybackIndex) cls += ' step-done';
-        else if (i === lblPlaybackIndex) cls += ' step-current';
-      }
-      return `<span class="${cls}">${move}</span>`;
+      const isCur = activePlaybackSource === 'lbl' && i === lblPlaybackIndex;
+      const isDone = activePlaybackSource === 'lbl' && i < lblPlaybackIndex;
+      return formatMoveHTML(move, { isCurrent: isCur, isDone });
     }).join('');
   }
 
@@ -1022,12 +1018,9 @@ export function renderAutomaticSolverView(container, {
       return;
     }
     chipsCfop.innerHTML = cfopResult.moves.map((move, i) => {
-      let cls = 'solution-step-badge';
-      if (activePlaybackSource === 'cfop') {
-        if (i < cfopPlaybackIndex) cls += ' step-done';
-        else if (i === cfopPlaybackIndex) cls += ' step-current';
-      }
-      return `<span class="${cls}">${move}</span>`;
+      const isCur = activePlaybackSource === 'cfop' && i === cfopPlaybackIndex;
+      const isDone = activePlaybackSource === 'cfop' && i < cfopPlaybackIndex;
+      return formatMoveHTML(move, { isCurrent: isCur, isDone });
     }).join('');
   }
 
@@ -1040,7 +1033,13 @@ export function renderAutomaticSolverView(container, {
       btnPlayKociemba.disabled = false;
       btnPauseKociemba.disabled = true;
       renderKociembaBadges();
-      updateStatusHUD('Kociemba Solution Complete!', kociembaResult.moves.length, kociembaResult.moves.length, '');
+      const isSolved = logicalCube.isSolved();
+      updateStatusHUD(
+        isSolved ? 'Kociemba Solved Successfully!' : 'Execution Finished — Cube Not Solved',
+        kociembaResult.moves.length,
+        kociembaResult.moves.length,
+        ''
+      );
       return;
     }
 
@@ -1061,7 +1060,13 @@ export function renderAutomaticSolverView(container, {
       isPlayingSolution = false;
       btnPlayKociemba.disabled = false;
       btnPauseKociemba.disabled = true;
-      updateStatusHUD('Kociemba Solution Complete!', kociembaResult.moves.length, kociembaResult.moves.length, '');
+      const isSolved = logicalCube.isSolved();
+      updateStatusHUD(
+        isSolved ? 'Kociemba Solved Successfully!' : 'Execution Finished — Cube Not Solved',
+        kociembaResult.moves.length,
+        kociembaResult.moves.length,
+        ''
+      );
     } else if (isPlayingSolution) {
       stepKociembaFwd();
     }
@@ -1124,7 +1129,17 @@ export function renderAutomaticSolverView(container, {
       kociembaPlaybackIndex++;
       btnStepBackKociemba.disabled = false;
       renderKociembaBadges();
-      updateStatusHUD('Kociemba Stepped Forward', kociembaPlaybackIndex, kociembaResult.moves.length, move);
+      if (kociembaPlaybackIndex >= kociembaResult.moves.length) {
+        const isSolved = logicalCube.isSolved();
+        updateStatusHUD(
+          isSolved ? 'Kociemba Solved Successfully!' : 'Execution Finished — Cube Not Solved',
+          kociembaPlaybackIndex,
+          kociembaResult.moves.length,
+          move
+        );
+      } else {
+        updateStatusHUD('Kociemba Stepped Forward', kociembaPlaybackIndex, kociembaResult.moves.length, move);
+      }
     }
   });
 
@@ -1135,6 +1150,7 @@ export function renderAutomaticSolverView(container, {
     if (undone) {
       const move = undone.move;
       const inv = move.includes("'") ? move.replace("'", "") : move.includes('2') ? move : move + "'";
+      logicalCube.applyMove(inv);
       await cubeEngine.executeMove(inv);
     }
     btnStepFwdKociemba.disabled = false;
@@ -1152,7 +1168,13 @@ export function renderAutomaticSolverView(container, {
       btnPlayLbl.disabled = false;
       btnPauseLbl.disabled = true;
       renderLblBadges();
-      updateStatusHUD('LBL Solution Complete!', lblResult.moves.length, lblResult.moves.length, '');
+      const isSolved = logicalCube.isSolved();
+      updateStatusHUD(
+        isSolved ? 'LBL Solved Successfully!' : 'Execution Finished — Cube Not Solved',
+        lblResult.moves.length,
+        lblResult.moves.length,
+        ''
+      );
       return;
     }
 
@@ -1173,7 +1195,13 @@ export function renderAutomaticSolverView(container, {
       isPlayingSolution = false;
       btnPlayLbl.disabled = false;
       btnPauseLbl.disabled = true;
-      updateStatusHUD('LBL Solution Complete!', lblResult.moves.length, lblResult.moves.length, '');
+      const isSolved = logicalCube.isSolved();
+      updateStatusHUD(
+        isSolved ? 'LBL Solved Successfully!' : 'Execution Finished — Cube Not Solved',
+        lblResult.moves.length,
+        lblResult.moves.length,
+        ''
+      );
     } else if (isPlayingSolution) {
       stepLblFwd();
     }
@@ -1236,7 +1264,17 @@ export function renderAutomaticSolverView(container, {
       lblPlaybackIndex++;
       btnStepBackLbl.disabled = false;
       renderLblBadges();
-      updateStatusHUD('LBL Stepped Forward', lblPlaybackIndex, lblResult.moves.length, move);
+      if (lblPlaybackIndex >= lblResult.moves.length) {
+        const isSolved = logicalCube.isSolved();
+        updateStatusHUD(
+          isSolved ? 'LBL Solved Successfully!' : 'Execution Finished — Cube Not Solved',
+          lblPlaybackIndex,
+          lblResult.moves.length,
+          move
+        );
+      } else {
+        updateStatusHUD('LBL Stepped Forward', lblPlaybackIndex, lblResult.moves.length, move);
+      }
     }
   });
 
@@ -1247,6 +1285,7 @@ export function renderAutomaticSolverView(container, {
     if (undone) {
       const move = undone.move;
       const inv = move.includes("'") ? move.replace("'", "") : move.includes('2') ? move : move + "'";
+      logicalCube.applyMove(inv);
       await cubeEngine.executeMove(inv);
     }
     btnStepFwdLbl.disabled = false;
@@ -1264,7 +1303,13 @@ export function renderAutomaticSolverView(container, {
       btnPlayCfop.disabled = false;
       btnPauseCfop.disabled = true;
       renderCfopBadges();
-      updateStatusHUD('CFOP-X Solution Complete!', cfopResult.moves.length, cfopResult.moves.length, '');
+      const isSolved = logicalCube.isSolved();
+      updateStatusHUD(
+        isSolved ? 'CFOP-X Solved Successfully!' : 'Execution Finished — Cube Not Solved',
+        cfopResult.moves.length,
+        cfopResult.moves.length,
+        ''
+      );
       return;
     }
 
@@ -1285,7 +1330,13 @@ export function renderAutomaticSolverView(container, {
       isPlayingSolution = false;
       btnPlayCfop.disabled = false;
       btnPauseCfop.disabled = true;
-      updateStatusHUD('CFOP-X Solution Complete!', cfopResult.moves.length, cfopResult.moves.length, '');
+      const isSolved = logicalCube.isSolved();
+      updateStatusHUD(
+        isSolved ? 'CFOP-X Solved Successfully!' : 'Execution Finished — Cube Not Solved',
+        cfopResult.moves.length,
+        cfopResult.moves.length,
+        ''
+      );
     } else if (isPlayingSolution) {
       stepCfopFwd();
     }
@@ -1348,7 +1399,17 @@ export function renderAutomaticSolverView(container, {
       cfopPlaybackIndex++;
       btnStepBackCfop.disabled = false;
       renderCfopBadges();
-      updateStatusHUD('CFOP-X Stepped Forward', cfopPlaybackIndex, cfopResult.moves.length, move);
+      if (cfopPlaybackIndex >= cfopResult.moves.length) {
+        const isSolved = logicalCube.isSolved();
+        updateStatusHUD(
+          isSolved ? 'CFOP-X Solved Successfully!' : 'Execution Finished — Cube Not Solved',
+          cfopPlaybackIndex,
+          cfopResult.moves.length,
+          move
+        );
+      } else {
+        updateStatusHUD('CFOP-X Stepped Forward', cfopPlaybackIndex, cfopResult.moves.length, move);
+      }
     }
   });
 
@@ -1359,6 +1420,7 @@ export function renderAutomaticSolverView(container, {
     if (undone) {
       const move = undone.move;
       const inv = move.includes("'") ? move.replace("'", "") : move.includes('2') ? move : move + "'";
+      logicalCube.applyMove(inv);
       await cubeEngine.executeMove(inv);
     }
     btnStepFwdCfop.disabled = false;
