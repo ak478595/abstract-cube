@@ -7,9 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node test_table3.js && node test_solvers.js && node test_ahs.js",
+    "test": "node test_table3.js && node test_solvers.js && node test_cfop_regression.js && node test_status_sync_regression.js",
     "test:solvers": "node test_solvers.js",
-    "test:ahs": "node test_ahs.js",
+    "test:cfop": "node test_cfop_regression.js",
     "benchmark": "node test_benchmark.js"
   },
   "dependencies": {

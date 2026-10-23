@@ -596,6 +596,60 @@ export class CubeEngine3D {
     }
   }
 
+  /**
+   * Checks whether all cubies in the 3D scene visually match the solved identity state
+   */
+  isVisuallySolved() {
+    const eps = 0.05;
+    for (const cubie of this.cubies) {
+      if (!cubie.userData || !cubie.userData.initialPos) continue;
+      if (cubie.position.distanceTo(cubie.userData.initialPos) > eps) {
+        return false;
+      }
+      // Check quaternion deviation from identity (quaternion distance = 1 - dot^2)
+      const q = cubie.quaternion;
+      const dot = Math.abs(q.w); // Identity quaternion is (0,0,0,1)
+      if (Math.abs(1 - dot) > eps) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Seamless visual recovery: if logical state is verified solved but rendered
+   * cubies have numerical or floating-point drift, smoothly snap cubies to identity.
+   */
+  snapToSolvedVisual() {
+    // If an animation is queued or actively rotating, cancel smoothly
+    this.currentAnimationId++;
+    while (this.moveQueue.length > 0) {
+      const item = this.moveQueue.shift();
+      if (item && item.resolve) item.resolve();
+    }
+    this.isAnimating = false;
+    this.clearSelection();
+
+    while (this.pivotGroup.children.length > 0) {
+      this.scene.add(this.pivotGroup.children[0]);
+    }
+    this.pivotGroup.rotation.set(0, 0, 0);
+    this.pivotGroup.position.set(0, 0, 0);
+    this.pivotGroup.scale.set(1, 1, 1);
+    this.pivotGroup.updateMatrixWorld(true);
+
+    for (const cubie of this.cubies) {
+      if (cubie.parent !== this.scene) {
+        this.scene.add(cubie);
+      }
+      cubie.position.copy(cubie.userData.initialPos);
+      cubie.rotation.set(0, 0, 0);
+      cubie.quaternion.identity();
+      cubie.updateMatrix();
+      cubie.updateMatrixWorld(true);
+    }
+  }
+
   resetView() {
     if (!this.camera || !this.controls) return;
     this.controls.reset();

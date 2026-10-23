@@ -435,6 +435,69 @@ body {
   background: #EFF6FF;
 }
 
+/* Homepage Bottom GitHub Button Section */
+.homepage-github-section {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 3rem 1.5rem 1rem;
+  margin-top: 2rem;
+  border-top: 1.5px solid var(--proj-border-subtle);
+}
+
+.btn-homepage-github {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85rem;
+  padding: 1.1rem 2.5rem;
+  background-color: #101828;
+  color: #FFFFFF;
+  border: 2px solid #101828;
+  border-radius: 12px;
+  font-family: var(--font-sans);
+  font-size: 1.25rem;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  box-shadow: 0 4px 14px rgba(16, 24, 40, 0.18);
+  max-width: 100%;
+  text-align: center;
+}
+
+.btn-homepage-github:hover {
+  background-color: var(--proj-action-primary);
+  border-color: var(--proj-action-primary);
+  color: #FFFFFF;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(23, 78, 166, 0.3);
+}
+
+.btn-homepage-github:active {
+  transform: translateY(0);
+}
+
+.btn-homepage-github .github-icon {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  transition: transform 0.2s ease;
+}
+
+.btn-homepage-github:hover .github-icon {
+  transform: scale(1.08);
+}
+
+@media (max-width: 640px) {
+  .btn-homepage-github {
+    width: 100%;
+    font-size: 1.1rem;
+    padding: 0.95rem 1.5rem;
+    gap: 0.65rem;
+  }
+}
+
 .notation-item {
   font-family: var(--font-mono);
   font-size: 1.25rem;

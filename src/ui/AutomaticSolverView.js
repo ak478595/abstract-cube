@@ -1034,6 +1034,9 @@ export function renderAutomaticSolverView(container, {
       btnPauseKociemba.disabled = true;
       renderKociembaBadges();
       const isSolved = logicalCube.isSolved();
+      if (isSolved && !cubeEngine.isVisuallySolved()) {
+        cubeEngine.snapToSolvedVisual();
+      }
       updateStatusHUD(
         isSolved ? 'Kociemba Solved Successfully!' : 'Execution Finished — Cube Not Solved',
         kociembaResult.moves.length,
@@ -1041,6 +1044,16 @@ export function renderAutomaticSolverView(container, {
         ''
       );
       return;
+    }
+
+    // Immediately before the final move, ensure animation system and logical state are aligned
+    if (kociembaPlaybackIndex === kociembaResult.moves.length - 1) {
+      if (cubeEngine.moveQueue && cubeEngine.moveQueue.length > 0) {
+        while (cubeEngine.moveQueue.length > 0) {
+          const item = cubeEngine.moveQueue.shift();
+          if (item && item.resolve) item.resolve();
+        }
+      }
     }
 
     const move = kociembaResult.moves[kociembaPlaybackIndex];
@@ -1061,6 +1074,9 @@ export function renderAutomaticSolverView(container, {
       btnPlayKociemba.disabled = false;
       btnPauseKociemba.disabled = true;
       const isSolved = logicalCube.isSolved();
+      if (isSolved && !cubeEngine.isVisuallySolved()) {
+        cubeEngine.snapToSolvedVisual();
+      }
       updateStatusHUD(
         isSolved ? 'Kociemba Solved Successfully!' : 'Execution Finished — Cube Not Solved',
         kociembaResult.moves.length,
@@ -1131,6 +1147,9 @@ export function renderAutomaticSolverView(container, {
       renderKociembaBadges();
       if (kociembaPlaybackIndex >= kociembaResult.moves.length) {
         const isSolved = logicalCube.isSolved();
+        if (isSolved && !cubeEngine.isVisuallySolved()) {
+          cubeEngine.snapToSolvedVisual();
+        }
         updateStatusHUD(
           isSolved ? 'Kociemba Solved Successfully!' : 'Execution Finished — Cube Not Solved',
           kociembaPlaybackIndex,
@@ -1169,6 +1188,9 @@ export function renderAutomaticSolverView(container, {
       btnPauseLbl.disabled = true;
       renderLblBadges();
       const isSolved = logicalCube.isSolved();
+      if (isSolved && !cubeEngine.isVisuallySolved()) {
+        cubeEngine.snapToSolvedVisual();
+      }
       updateStatusHUD(
         isSolved ? 'LBL Solved Successfully!' : 'Execution Finished — Cube Not Solved',
         lblResult.moves.length,
@@ -1176,6 +1198,16 @@ export function renderAutomaticSolverView(container, {
         ''
       );
       return;
+    }
+
+    // Immediately before the final move, ensure animation system and logical state are aligned
+    if (lblPlaybackIndex === lblResult.moves.length - 1) {
+      if (cubeEngine.moveQueue && cubeEngine.moveQueue.length > 0) {
+        while (cubeEngine.moveQueue.length > 0) {
+          const item = cubeEngine.moveQueue.shift();
+          if (item && item.resolve) item.resolve();
+        }
+      }
     }
 
     const move = lblResult.moves[lblPlaybackIndex];
@@ -1196,6 +1228,9 @@ export function renderAutomaticSolverView(container, {
       btnPlayLbl.disabled = false;
       btnPauseLbl.disabled = true;
       const isSolved = logicalCube.isSolved();
+      if (isSolved && !cubeEngine.isVisuallySolved()) {
+        cubeEngine.snapToSolvedVisual();
+      }
       updateStatusHUD(
         isSolved ? 'LBL Solved Successfully!' : 'Execution Finished — Cube Not Solved',
         lblResult.moves.length,
@@ -1266,6 +1301,9 @@ export function renderAutomaticSolverView(container, {
       renderLblBadges();
       if (lblPlaybackIndex >= lblResult.moves.length) {
         const isSolved = logicalCube.isSolved();
+        if (isSolved && !cubeEngine.isVisuallySolved()) {
+          cubeEngine.snapToSolvedVisual();
+        }
         updateStatusHUD(
           isSolved ? 'LBL Solved Successfully!' : 'Execution Finished — Cube Not Solved',
           lblPlaybackIndex,
@@ -1304,6 +1342,9 @@ export function renderAutomaticSolverView(container, {
       btnPauseCfop.disabled = true;
       renderCfopBadges();
       const isSolved = logicalCube.isSolved();
+      if (isSolved && !cubeEngine.isVisuallySolved()) {
+        cubeEngine.snapToSolvedVisual();
+      }
       updateStatusHUD(
         isSolved ? 'CFOP-X Solved Successfully!' : 'Execution Finished — Cube Not Solved',
         cfopResult.moves.length,
@@ -1311,6 +1352,16 @@ export function renderAutomaticSolverView(container, {
         ''
       );
       return;
+    }
+
+    // Immediately before the final move, ensure animation system and logical state are aligned
+    if (cfopPlaybackIndex === cfopResult.moves.length - 1) {
+      if (cubeEngine.moveQueue && cubeEngine.moveQueue.length > 0) {
+        while (cubeEngine.moveQueue.length > 0) {
+          const item = cubeEngine.moveQueue.shift();
+          if (item && item.resolve) item.resolve();
+        }
+      }
     }
 
     const move = cfopResult.moves[cfopPlaybackIndex];
@@ -1331,6 +1382,9 @@ export function renderAutomaticSolverView(container, {
       btnPlayCfop.disabled = false;
       btnPauseCfop.disabled = true;
       const isSolved = logicalCube.isSolved();
+      if (isSolved && !cubeEngine.isVisuallySolved()) {
+        cubeEngine.snapToSolvedVisual();
+      }
       updateStatusHUD(
         isSolved ? 'CFOP-X Solved Successfully!' : 'Execution Finished — Cube Not Solved',
         cfopResult.moves.length,
@@ -1401,6 +1455,9 @@ export function renderAutomaticSolverView(container, {
       renderCfopBadges();
       if (cfopPlaybackIndex >= cfopResult.moves.length) {
         const isSolved = logicalCube.isSolved();
+        if (isSolved && !cubeEngine.isVisuallySolved()) {
+          cubeEngine.snapToSolvedVisual();
+        }
         updateStatusHUD(
           isSolved ? 'CFOP-X Solved Successfully!' : 'Execution Finished — Cube Not Solved',
           cfopPlaybackIndex,
